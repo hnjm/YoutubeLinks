@@ -2,74 +2,62 @@
 using Microsoft.Extensions.Localization;
 using YoutubeLinks.Api.Auth;
 using YoutubeLinks.Api.Data.Repositories;
-using YoutubeLinks.Api.Emails.Models;
 using YoutubeLinks.Api.Emails;
+using YoutubeLinks.Api.Emails.Models;
 using YoutubeLinks.Api.Helpers;
 using YoutubeLinks.Api.Localization;
 using YoutubeLinks.Shared.Exceptions;
 using YoutubeLinks.Shared.Features.Users.Commands;
 
-namespace YoutubeLinks.Api.Features.Users.Commands
+namespace YoutubeLinks.Api.Features.Users.Commands;
+
+public static class ForgotPasswordFeature
 {
-    public static class ForgotPasswordFeature
+    public static void Endpoint(this IEndpointRouteBuilder app)
     {
-        public static IEndpointRouteBuilder Endpoint(this IEndpointRouteBuilder app)
-        {
-            app.MapPost("/api/users/forgotPassword", async (
+        app.MapPost("/api/users/forgotPassword", async (
                 ForgotPassword.Command command,
                 IMediator mediator,
                 CancellationToken cancellationToken) =>
             {
                 return Results.Ok(await mediator.Send(command, cancellationToken));
             })
-                .WithTags(Tags.Users)
-                .AllowAnonymous();
+            .WithTags(Tags.Users)
+            .AllowAnonymous();
+    }
 
-            return app;
-        }
-
-        public class Handler : IRequestHandler<ForgotPassword.Command, Unit>
+    public class Handler(
+        IUserRepository userRepository,
+        IEmailService emailService,
+        IForgotPasswordService forgotPasswordService,
+        IStringLocalizer<ApiValidationMessage> validationLocalizer)
+        : IRequestHandler<ForgotPassword.Command, Unit>
+    {
+        public async Task<Unit> Handle(
+            ForgotPassword.Command command,
+            CancellationToken cancellationToken)
         {
-            private readonly IUserRepository _userRepository;
-            private readonly IEmailService _emailService;
-            private readonly IForgotPasswordService _forgotPasswordService;
-            private readonly IStringLocalizer<ApiValidationMessage> _validationLocalizer;
+            var user = await userRepository.GetByEmail(command.Email) ??
+                       throw new MyValidationException(nameof(ForgotPassword.Command.Email),
+                           validationLocalizer[
+                               nameof(ApiValidationMessageString.EmailUserWithGivenEmailDoesNotExist)]);
 
-            public Handler(
-                IUserRepository userRepository,
-                IEmailService emailService,
-                IForgotPasswordService forgotPasswordService,
-                IStringLocalizer<ApiValidationMessage> validationLocalizer)
+            if (!user.EmailConfirmed)
             {
-                _userRepository = userRepository;
-                _emailService = emailService;
-                _forgotPasswordService = forgotPasswordService;
-                _validationLocalizer = validationLocalizer;
+                throw new MyValidationException(nameof(ForgotPassword.Command.Email),
+                    validationLocalizer[nameof(ApiValidationMessageString.EmailIsNotConfirmed)]);
             }
 
-            public async Task<Unit> Handle(
-                ForgotPassword.Command command,
-                CancellationToken cancellationToken)
+            user.ForgotPasswordToken = forgotPasswordService.GenerateForgotPasswordToken(command.Email);
+            await userRepository.Update(user);
+
+            await emailService.SendEmail(user.Email, new ForgotPasswordTemplateModel
             {
-                var user = await _userRepository.GetByEmail(command.Email) ??
-                    throw new MyValidationException(nameof(ForgotPassword.Command.Email),
-                        _validationLocalizer[nameof(ApiValidationMessageString.EmailUserWithGivenEmailDoesNotExist)]);
+                UserName = user.UserName,
+                Link = forgotPasswordService.GenerateForgotPasswordLink(user.Email, user.ForgotPasswordToken)
+            });
 
-                if (!user.EmailConfirmed)
-                    throw new MyValidationException(nameof(ForgotPassword.Command.Email),
-                        _validationLocalizer[nameof(ApiValidationMessageString.EmailIsNotConfirmed)]);
-
-                user.ForgotPasswordToken = _forgotPasswordService.GenerateForgotPasswordToken(command.Email);
-                await _userRepository.Update(user);
-
-                await _emailService.SendEmail(user.Email, new ForgotPasswordTemplateModel
-                {
-                    UserName = user.UserName,
-                    Link = _forgotPasswordService.GenerateForgotPasswordLink(user.Email, user.ForgotPasswordToken),
-                });
-
-                return Unit.Value;
-            }
+            return Unit.Value;
         }
     }
 }

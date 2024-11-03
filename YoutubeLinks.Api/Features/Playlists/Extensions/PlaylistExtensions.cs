@@ -9,128 +9,134 @@ using YoutubeLinks.Shared.Features.Playlists.Helpers;
 using YoutubeLinks.Shared.Features.Playlists.Queries;
 using YoutubeLinks.Shared.Features.Playlists.Responses;
 
-namespace YoutubeLinks.Api.Features.Playlists.Extensions
+namespace YoutubeLinks.Api.Features.Playlists.Extensions;
+
+public static class PlaylistExtensions
 {
-    public static class PlaylistExtensions
+    public static IEndpointRouteBuilder AddPlaylistsEndpoints(this IEndpointRouteBuilder app)
     {
-        public static IEndpointRouteBuilder AddPlaylistsEndpoints(this IEndpointRouteBuilder app)
-        {
-            CreatePlaylistFeature.Endpoint(app);
-            DeletePlaylistFeature.Endpoint(app);
-            ExportPlaylistFeature.Endpoint(app);
-            ImportPlaylistFeature.Endpoint(app);
-            ResetLinksDownloadedFlagFeature.Endpoint(app);
-            UpdatePlaylistFeature.Endpoint(app);
-            GetAllPublicPlaylistsFeature.Endpoint(app);
-            GetAllUserPlaylistsFeature.Endpoint(app);
-            GetPlaylistFeature.Endpoint(app);
+        CreatePlaylistFeature.Endpoint(app);
+        DeletePlaylistFeature.Endpoint(app);
+        ExportPlaylistFeature.Endpoint(app);
+        ImportPlaylistFeature.Endpoint(app);
+        ResetLinksDownloadedFlagFeature.Endpoint(app);
+        UpdatePlaylistFeature.Endpoint(app);
+        GetAllPublicPlaylistsFeature.Endpoint(app);
+        GetAllUserPlaylistsFeature.Endpoint(app);
+        GetPlaylistFeature.Endpoint(app);
 
-            return app;
-        }
+        return app;
+    }
 
-        public static PlaylistDto ToDto(this Playlist playlist)
+    public static PlaylistDto ToDto(this Playlist playlist)
+    {
+        return new PlaylistDto
         {
-            return new()
-            {
-                Id = playlist.Id,
-                Created = playlist.Created,
-                Modified = playlist.Modified,
-                Name = playlist.Name,
-                Public = playlist.Public,
-                UserId = playlist.UserId,
-            };
-        }
+            Id = playlist.Id,
+            Created = playlist.Created,
+            Modified = playlist.Modified,
+            Name = playlist.Name,
+            Public = playlist.Public,
+            UserId = playlist.UserId
+        };
+    }
 
-        public static PlaylistJSONModel GetPlaylistModel(this Playlist playlist)
-        {
-            var links = playlist.Links.Select(x => new LinkJSONModel()
+    public static PlaylistJsonModel GetPlaylistModel(this Playlist playlist)
+    {
+        var links = playlist.Links
+            .Select(x => new LinkJsonModel
             {
                 Title = x.Title,
                 Url = x.Url,
                 VideoId = x.VideoId
-            }).OrderBy(x => x.Title);
+            })
+            .OrderBy(x => x.Title)
+            .ToList();
 
-            var playlistModel = new PlaylistJSONModel()
-            {
-                LinksCount = links.Count(),
-                LinkModels = links,
-            };
-
-            return playlistModel;
-        }
-
-        /* GetAllPublicPlaylists.Query */
-
-        public static IQueryable<Playlist> FilterPlaylists(
-            this IQueryable<Playlist> playlists,
-            GetAllPublicPlaylists.Query query)
+        var playlistModel = new PlaylistJsonModel
         {
-            var searchTerm = query.SearchTerm?.ToLower()?.Trim();
+            LinksCount = links.Count,
+            LinkModels = links
+        };
 
-            if (!string.IsNullOrWhiteSpace(searchTerm))
-                playlists = playlists.Where(x =>
-                    x.Name.ToLower().Contains(searchTerm));
+        return playlistModel;
+    }
 
-            return playlists;
-        }
+    /* GetAllPublicPlaylists.Query */
 
-        public static IQueryable<Playlist> SortPlaylists(
-            this IQueryable<Playlist> playlists,
-            GetAllPublicPlaylists.Query query)
+    public static IQueryable<Playlist> FilterPlaylists(
+        this IQueryable<Playlist> playlists,
+        GetAllPublicPlaylists.Query query)
+    {
+        var searchTerm = query.SearchTerm?.ToLower()?.Trim();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
         {
-            return query.SortOrder switch
-            {
-                SortOrder.Ascending => playlists.OrderBy(GetPlaylistSortProperty(query)),
-                SortOrder.Descending => playlists.OrderByDescending(GetPlaylistSortProperty(query)),
-                SortOrder.None => playlists.OrderBy(x => x.Name),
-                _ => playlists.OrderBy(x => x.Name),
-            };
+            playlists = playlists.Where(x =>
+                x.Name.ToLower().Contains(searchTerm.ToLower()));
         }
 
-        private static Expression<Func<Playlist, object>> GetPlaylistSortProperty(GetAllPublicPlaylists.Query query)
+        return playlists;
+    }
+
+    public static IQueryable<Playlist> SortPlaylists(
+        this IQueryable<Playlist> playlists,
+        GetAllPublicPlaylists.Query query)
+    {
+        return query.SortOrder switch
         {
-            return query.SortColumn.ToLowerInvariant() switch
-            {
-                "name" => playlist => playlist.Name,
-                _ => playlist => playlist.Name,
-            };
-        }
+            SortOrder.Ascending => playlists.OrderBy(GetPlaylistSortProperty(query)),
+            SortOrder.Descending => playlists.OrderByDescending(GetPlaylistSortProperty(query)),
+            SortOrder.None => playlists.OrderBy(x => x.Name),
+            _ => playlists.OrderBy(x => x.Name)
+        };
+    }
 
-        /* GetAllUserPlaylists.Query */
-
-        public static IQueryable<Playlist> FilterPlaylists(
-            this IQueryable<Playlist> playlists,
-            GetAllUserPlaylists.Query query)
+    private static Expression<Func<Playlist, object>> GetPlaylistSortProperty(GetAllPublicPlaylists.Query query)
+    {
+        return query.SortColumn.ToLowerInvariant() switch
         {
-            var searchTerm = query.SearchTerm?.ToLower()?.Trim();
+            "name" => playlist => playlist.Name,
+            _ => playlist => playlist.Name
+        };
+    }
 
-            if (!string.IsNullOrWhiteSpace(searchTerm))
-                playlists = playlists.Where(x =>
-                    x.Name.ToLower().Contains(searchTerm));
+    /* GetAllUserPlaylists.Query */
 
-            return playlists;
-        }
+    public static IQueryable<Playlist> FilterPlaylists(
+        this IQueryable<Playlist> playlists,
+        GetAllUserPlaylists.Query query)
+    {
+        var searchTerm = query.SearchTerm?.ToLower()?.Trim();
 
-        public static IQueryable<Playlist> SortPlaylists(
-            this IQueryable<Playlist> playlists,
-            GetAllUserPlaylists.Query query)
+        if (!string.IsNullOrWhiteSpace(searchTerm))
         {
-            return query.SortOrder switch
-            {
-                SortOrder.Ascending => playlists.OrderBy(GetPlaylistSortProperty(query)),
-                SortOrder.Descending => playlists.OrderByDescending(GetPlaylistSortProperty(query)),
-                SortOrder.None => playlists.OrderBy(x => x.Name),
-                _ => playlists.OrderBy(x => x.Name),
-            };
+            playlists = playlists.Where(x =>
+                x.Name.ToLower().Contains(searchTerm.ToLower()));
         }
 
-        private static Expression<Func<Playlist, object>> GetPlaylistSortProperty(GetAllUserPlaylists.Query query)
+        return playlists;
+    }
+
+    public static IQueryable<Playlist> SortPlaylists(
+        this IQueryable<Playlist> playlists,
+        GetAllUserPlaylists.Query query)
+    {
+        return query.SortOrder switch
         {
-            return query.SortColumn.ToLowerInvariant() switch
-            {
-                "name" => playlist => playlist.Name,
-                _ => playlist => playlist.Name,
-            };
-        }
+            SortOrder.Ascending => playlists.OrderBy(GetPlaylistSortProperty(query)),
+            SortOrder.Descending => playlists.OrderByDescending(GetPlaylistSortProperty(query)),
+            SortOrder.None => playlists.OrderBy(x => x.Name),
+            _ => playlists.OrderBy(x => x.Name)
+        };
+    }
+
+    private static Expression<Func<Playlist, object>> GetPlaylistSortProperty(GetAllUserPlaylists.Query query)
+    {
+        return query.SortColumn.ToLowerInvariant() switch
+        {
+            "name" => playlist => playlist.Name,
+            _ => playlist => playlist.Name
+        };
     }
 }

@@ -1,7 +1,6 @@
-﻿namespace YoutubeLinks.Blazor.Clients
+﻿namespace YoutubeLinks.Blazor.Clients;
+
+public class ApiOptions
 {
-    public class ApiOptions
-    {
-        public string Url { get; set; }
-    }
+    public string Url { get; init; }
 }

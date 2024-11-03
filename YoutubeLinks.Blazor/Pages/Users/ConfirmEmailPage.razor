@@ -2,46 +2,45 @@
 @attribute [AllowAnonymous]
 
 <MudPaper Class="pa-4"
-          Elevation=3>
+          Elevation="3">
     @if (!_success)
     {
         <MudText>
-            @Localizer[nameof(AppStrings.ConfirmEmailInfo)]
+            @localizer[nameof(AppStrings.ConfirmEmailInfo)]
         </MudText>
 
-        <EditForm Model=_command
-                  OnValidSubmit=OnValidSubmit>
-            <CustomValidator @ref=_customValidator />
+        <EditForm Model="Command"
+                  OnValidSubmit="OnValidSubmit">
+            <CustomValidator @ref="_customValidator" />
             <FluentValidationValidator />
 
-            <FritzTextField @bind-Value=_command.Email
-                            For="() => _command.Email"
+            <FritzTextField @bind-Value="Command.Email"
+                            For="() => Command.Email"
                             HideField=true />
-            <FritzValidationMessage For="() => _command.Email" />
+            <FritzValidationMessage For="() => Command.Email" />
 
-            <FritzTextField @bind-Value=_command.Token
-                            For="() => _command.Token"
+            <FritzTextField @bind-Value="Command.Token"
+                            For="() => Command.Token"
                             HideField=true />
-            <FritzValidationMessage For="() => _command.Token" />
+            <FritzValidationMessage For="() => Command.Token" />
 
-            <FritzProcessingButton @ref=_processingButton
-                                   ButtonType=ButtonType.Submit
-                                   Color=Color.Primary
-                                   Variant=Variant.Filled
-                                   ButtonText=@Localizer[nameof(AppStrings.ConfirmEmail)] />
+            <FritzProcessingButton ButtonText="@localizer[nameof(AppStrings.ConfirmEmail)]"
+                                   ButtonType="ButtonType.Submit"
+                                   Color="Color.Primary"
+                                   @ref="_processingButton" />
         </EditForm>
     }
     else
     {
         <MudText Color=Color.Success>
-            @Localizer[nameof(AppStrings.SuccessfulEmailConfirmation)]
+            @localizer[nameof(AppStrings.SuccessfulEmailConfirmation)]
         </MudText>
     }
 
     @if (_parsingError)
     {
         <MudText Color=Color.Error>
-            @Localizer[nameof(AppStrings.InvalidEmailOrToken)]
+            @localizer[nameof(AppStrings.InvalidEmailOrToken)]
         </MudText>
     }
 </MudPaper>

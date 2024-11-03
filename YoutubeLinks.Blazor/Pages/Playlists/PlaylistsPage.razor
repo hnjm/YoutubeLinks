@@ -2,135 +2,135 @@
 @attribute [AllowAnonymous]
 
 <PageTitle>
-    @Localizer[nameof(AppStrings.Playlists)]
+    @localizer[nameof(AppStrings.Playlists)]
 </PageTitle>
 
-<FritzBreadcrumbs Items=_items />
+<FritzBreadcrumbs Items="_items" />
 
-<MudTable ServerData=ServerReload
-          @ref=_table
-          Dense=true
-          Hover=true
-          Elevation=3>
+<MudTable Dense="true"
+          Elevation="3"
+          Hover="true"
+          @ref="_table"
+          ServerData="ServerReload">
     <ToolBarContent>
-        <MudText Typo=Typo.h6>
-            @Localizer[nameof(AppStrings.Playlists)]
+        <MudText Typo="Typo.h6">
+            @localizer[nameof(AppStrings.Playlists)]
         </MudText>
-        <AuthorizeView Policy=@Policy.User>
+        <AuthorizeView Policy="@Policy.User">
             <Authorized>
                 @if (_isUserPlaylist)
                 {
-                    <FritzTooltip Text=@Localizer[nameof(AppStrings.CreatePlaylist)]>
-                        <MudIconButton Icon=@Icons.Material.Filled.Add
-                                       Color=Color.Warning
-                                       Size=Size.Small
+                    <FritzTooltip Text=@localizer[nameof(AppStrings.CreatePlaylist)]>
+                        <MudIconButton Color=Color.Warning
+                                       Icon=@Icons.Material.Filled.Add
                                        OnClick=CreateUserPlaylist
-                                       UserAttributes=@(new() { { TestConst.TestId, PlaylistsPageConst.CreatePlaylistButton } }) />
-                    </FritzTooltip>
-                    <FritzTooltip Text=@Localizer[nameof(AppStrings.ImportPlaylistFromJson)]>
-                        <MudIconButton Icon=@Icons.Material.Filled.ImportExport
-                                       Color=Color.Info
                                        Size=Size.Small
-                                       OnClick=ImportPlaylistFromJSON
-                                       UserAttributes=@(new() { { TestConst.TestId, PlaylistsPageConst.ImportPlaylistButton } }) />
+                                       UserAttributes=@(new Dictionary<string, object> { { TestConst.TestId, PlaylistsPageConst.CreatePlaylistButton } }) />
+                    </FritzTooltip>
+                    <FritzTooltip Text=@localizer[nameof(AppStrings.ImportPlaylistFromJson)]>
+                        <MudIconButton Color=Color.Info
+                                       Icon=@Icons.Material.Filled.ImportExport
+                                       OnClick=ImportPlaylistFromJson
+                                       Size=Size.Small
+                                       UserAttributes=@(new Dictionary<string, object> { { TestConst.TestId, PlaylistsPageConst.ImportPlaylistButton } }) />
                     </FritzTooltip>
                 }
             </Authorized>
         </AuthorizeView>
         <MudSpacer />
-        <FritzSearchTextField @bind-Value=_searchString
+        <FritzSearchTextField @bind-Value="_searchString"
                               OnSearch="() => _table.ReloadServerData()"
-                              UserAttributes=@(new() { { TestConst.TestId, PlaylistsPageConst.SearchInput } }) />
+                              UserAttributes="@(new Dictionary<string, object> { { TestConst.TestId, PlaylistsPageConst.SearchInput } })" />
     </ToolBarContent>
     <HeaderContent>
         <MudTh>
             <MudTableSortLabel SortLabel="name"
-                               T=PlaylistDto
-                               UserAttributes=@(new() { { TestConst.TestId, PlaylistsPageConst.NameTableSortLabel } })>
-                @Localizer[nameof(AppStrings.Name)]
+                               T="PlaylistDto"
+                               UserAttributes="@(new Dictionary<string, object> { { TestConst.TestId, PlaylistsPageConst.NameTableSortLabel } })">
+                @localizer[nameof(AppStrings.Name)]
             </MudTableSortLabel>
         </MudTh>
         <MudTh>
-            @Localizer[nameof(AppStrings.Public)]
+            @localizer[nameof(AppStrings.Public)]
         </MudTh>
         <MudTh>
-            @Localizer[nameof(AppStrings.Links)]
+            @localizer[nameof(AppStrings.Links)]
         </MudTh>
         <MudTh>
-            @Localizer[nameof(AppStrings.Actions)]
+            @localizer[nameof(AppStrings.Actions)]
         </MudTh>
     </HeaderContent>
     <RowTemplate>
-        <MudTd DataLabel=@Localizer[nameof(AppStrings.Name)]
-               UserAttributes=@(new() { { TestConst.TestId, PlaylistsPageConst.NameTableRowData } })>
+        <MudTd DataLabel="@localizer[nameof(AppStrings.Name)]"
+               UserAttributes="@(new Dictionary<string, object> { { TestConst.TestId, PlaylistsPageConst.NameTableRowData } })">
             @context.Name
         </MudTd>
-        <MudTd DataLabel=@Localizer[nameof(AppStrings.Public)]>
+        <MudTd DataLabel="@localizer[nameof(AppStrings.Public)]">
             @if (context.Public)
             {
-                <FritzTooltip Text=@Localizer[nameof(AppStrings.Public)]>
+                <FritzTooltip Text=@localizer[nameof(AppStrings.Public)]>
                     <MudIcon Icon=@Icons.Material.Filled.Visibility />
                 </FritzTooltip>
             }
             else
             {
-                <FritzTooltip Text=@Localizer[nameof(AppStrings.Private)]>
+                <FritzTooltip Text=@localizer[nameof(AppStrings.Private)]>
                     <MudIcon Icon=@Icons.Material.Filled.VisibilityOff />
                 </FritzTooltip>
             }
         </MudTd>
-        <MudTd DataLabel=@Localizer[nameof(AppStrings.Links)]>
-            <FritzTooltip Text=@Localizer[nameof(AppStrings.Links)]>
-                <MudIconButton Icon=@Icons.Material.Filled.List
-                               Color=Color.Primary
-                               Size=Size.Small
+        <MudTd DataLabel="@localizer[nameof(AppStrings.Links)]">
+            <FritzTooltip Text="@localizer[nameof(AppStrings.Links)]">
+                <MudIconButton Color="Color.Primary"
+                               Icon="@Icons.Material.Filled.List"
                                OnClick="() => RedirectToLinksPage(context.Id)"
-                               UserAttributes=@(new() { { TestConst.TestId, PlaylistsPageConst.NavigateToPlaylistLinksButton } }) />
+                               Size="Size.Small"
+                               UserAttributes="@(new Dictionary<string, object> { { TestConst.TestId, PlaylistsPageConst.NavigateToPlaylistLinksButton } })" />
             </FritzTooltip>
         </MudTd>
-        <MudTd DataLabel=@Localizer[nameof(AppStrings.Actions)]>
-            <MudStack Row=true
-                      AlignItems=AlignItems.Center>
-                <FritzTooltip Text=@Localizer[nameof(AppStrings.ExportPlaylist)]>
-                    <MudMenu Icon=@Icons.Material.Filled.Save
-                             Color=Color.Info
-                             Size=Size.Small
-                             UserAttributes=@(new() { { TestConst.TestId, PlaylistsPageConst.ExportPlaylistButton } })>
-                        <MudMenuItem OnClick="() => ExportPlaylistToFile(context.Id, PlaylistFileType.JSON)"
-                                     UserAttributes=@(new() { { TestConst.TestId, PlaylistsPageConst.ExportPlaylistToJsonButton } })>
-                            @Localizer[nameof(AppStrings.ExportPlaylistToJson)]
+        <MudTd DataLabel="@localizer[nameof(AppStrings.Actions)]">
+            <MudStack AlignItems="AlignItems.Center"
+                      Row="true">
+                <FritzTooltip Text="@localizer[nameof(AppStrings.ExportPlaylist)]">
+                    <MudMenu Color="Color.Info"
+                             Icon="@Icons.Material.Filled.Save"
+                             Size="Size.Small"
+                             UserAttributes="@(new Dictionary<string, object> { { TestConst.TestId, PlaylistsPageConst.ExportPlaylistButton } })">
+                        <MudMenuItem OnClick="() => ExportPlaylistToFile(context.Id, PlaylistFileType.Json)"
+                                     UserAttributes="@(new Dictionary<string, object> { { TestConst.TestId, PlaylistsPageConst.ExportPlaylistToJsonButton } })">
+                            @localizer[nameof(AppStrings.ExportPlaylistToJson)]
                         </MudMenuItem>
-                        <MudMenuItem OnClick="() => ExportPlaylistToFile(context.Id, PlaylistFileType.TXT)"
-                                     UserAttributes=@(new() { { TestConst.TestId, PlaylistsPageConst.ExportPlaylistToTxtButton } })>
-                            @Localizer[nameof(AppStrings.ExportPlaylistToTxt)]
+                        <MudMenuItem OnClick="() => ExportPlaylistToFile(context.Id, PlaylistFileType.Txt)"
+                                     UserAttributes="@(new Dictionary<string, object> { { TestConst.TestId, PlaylistsPageConst.ExportPlaylistToTxtButton } })">
+                            @localizer[nameof(AppStrings.ExportPlaylistToTxt)]
                         </MudMenuItem>
                     </MudMenu>
                 </FritzTooltip>
-                <FritzTooltip Text=@Localizer[nameof(AppStrings.DownloadPlaylist)]>
-                    <MudIconButton Icon=@Icons.Material.Filled.Download
-                                   Color=Color.Info
-                                   Size=Size.Small
+                <FritzTooltip Text="@localizer[nameof(AppStrings.DownloadPlaylist)]">
+                    <MudIconButton Color="Color.Info"
+                                   Icon="@Icons.Material.Filled.Download"
                                    OnClick="() => RedirectToDownloadPlaylistPage(context.Id)"
-                                   UserAttributes=@(new() { { TestConst.TestId, PlaylistsPageConst.DownloadPlaylistButton } }) />
+                                   Size="Size.Small"
+                                   UserAttributes="@(new Dictionary<string, object> { { TestConst.TestId, PlaylistsPageConst.DownloadPlaylistButton } })" />
                 </FritzTooltip>
-                <AuthorizeView Policy=@Policy.User
-                               Context="auth">
+                <AuthorizeView Context="auth"
+                               Policy="@Policy.User">
                     <Authorized>
                         @if (_isUserPlaylist)
                         {
-                            <FritzTooltip Text=@Localizer[nameof(AppStrings.UpdatePlaylist)]>
-                                <MudIconButton Icon=@Icons.Material.Filled.Edit
-                                               Color=Color.Warning
-                                               Size=Size.Small
+                            <FritzTooltip Text=@localizer[nameof(AppStrings.UpdatePlaylist)]>
+                                <MudIconButton Color=Color.Warning
+                                               Icon=@Icons.Material.Filled.Edit
                                                OnClick="() => UpdateUserPlaylist(context)"
-                                               UserAttributes=@(new() { { TestConst.TestId, PlaylistsPageConst.UpdatePlaylistButton } }) />
-                            </FritzTooltip>
-                            <FritzTooltip Text=@Localizer[nameof(AppStrings.DeletePlaylist)]>
-                                <MudIconButton Icon=@Icons.Material.Filled.Delete
-                                               Color=Color.Warning
                                                Size=Size.Small
+                                               UserAttributes=@(new Dictionary<string, object> { { TestConst.TestId, PlaylistsPageConst.UpdatePlaylistButton } }) />
+                            </FritzTooltip>
+                            <FritzTooltip Text=@localizer[nameof(AppStrings.DeletePlaylist)]>
+                                <MudIconButton Color=Color.Warning
+                                               Icon=@Icons.Material.Filled.Delete
                                                OnClick="() => DeleteUserPlaylist(context.Id)"
-                                               UserAttributes=@(new() { { TestConst.TestId, PlaylistsPageConst.DeletePlaylistButton } }) />
+                                               Size=Size.Small
+                                               UserAttributes=@(new Dictionary<string, object> { { TestConst.TestId, PlaylistsPageConst.DeletePlaylistButton } }) />
                             </FritzTooltip>
                         }
                     </Authorized>
@@ -140,16 +140,16 @@
     </RowTemplate>
     <NoRecordsContent>
         <MudText>
-            @Localizer[nameof(AppStrings.NoMatchingRecordsFound)]
+            @localizer[nameof(AppStrings.NoMatchingRecordsFound)]
         </MudText>
     </NoRecordsContent>
     <LoadingContent>
         <MudText>
-            @Localizer[nameof(AppStrings.Loading)]
+            @localizer[nameof(AppStrings.Loading)]
         </MudText>
     </LoadingContent>
     <PagerContent>
-        <MudTablePager RowsPerPageString=@Localizer[nameof(AppStrings.RowsPerPage)]
-                       InfoFormat=@Localizer[nameof(AppStrings.PaginationInfoFormat)] />
+        <MudTablePager InfoFormat="@localizer[nameof(AppStrings.PaginationInfoFormat)]"
+                       RowsPerPageString="@localizer[nameof(AppStrings.RowsPerPage)]" />
     </PagerContent>
 </MudTable>

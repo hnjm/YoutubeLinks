@@ -10,158 +10,152 @@ using YoutubeLinks.Shared.Exceptions;
 using YoutubeLinks.Shared.Features.Links.Commands;
 using YoutubeLinks.Shared.Features.Links.Helpers;
 
-namespace YoutubeLinks.UnitTests.Features.Links.Commands
+namespace YoutubeLinks.UnitTests.Features.Links.Commands;
+
+public class DownloadLinkFeatureTests
 {
-    public class DownloadLinkFeatureTests
+    private readonly IAuthService _authService = Substitute.For<IAuthService>();
+    private readonly IYoutubeService _youtubeService = Substitute.For<IYoutubeService>();
+
+    [Fact]
+    public async Task DownloadLinkHandler_ThrowsNotFoundException_IfLinkIsNotFound()
     {
-        private readonly IAuthService _authService;
-        private readonly IYoutubeService _youtubeService;
-
-        public DownloadLinkFeatureTests()
+        var command = new DownloadLink.Command
         {
-            _authService = Substitute.For<IAuthService>();
-            _youtubeService = Substitute.For<IYoutubeService>();
-        }
+            Id = 1,
+            YoutubeFileType = YoutubeFileType.Mp3
+        };
 
-        [Fact]
-        public async Task DownloadLinkHandler_ThrowsNotFoundException_IfLinkIsNotFound()
-        {
-            var command = new DownloadLink.Command
+        var linkRepository = Substitute.For<ILinkRepository>();
+        var mediator = Substitute.For<IMediator>();
+
+        linkRepository.Get(Arg.Any<int>()).Returns(Task.FromResult<Link>(null));
+
+        mediator.Send(Arg.Any<DownloadLink.Command>(), CancellationToken.None)
+            .Returns(callInfo =>
             {
-                Id = 1,
-                YoutubeFileType = YoutubeFileType.MP3,
-            };
-
-            var linkRepository = Substitute.For<ILinkRepository>();
-            var mediator = Substitute.For<IMediator>();
-
-            linkRepository.Get(Arg.Any<int>()).Returns(Task.FromResult<Link>(null));
-
-            mediator.Send(Arg.Any<DownloadLink.Command>(), CancellationToken.None)
-                .Returns(callInfo =>
-                {
-                    var handler = new DownloadLinkFeature.Handler(_authService, linkRepository, _youtubeService);
-                    return handler.Handle(callInfo.Arg<DownloadLink.Command>(), CancellationToken.None);
-                });
-
-            var action = async () => await mediator.Send(command, CancellationToken.None);
-
-            await Assert.ThrowsAsync<MyNotFoundException>(action);
-        }
-
-        [Fact]
-        public async Task DownloadLinkHandler_ThrowsForbiddenException_IfPlaylistIsNotOwnedByLoggedInUserOrPlaylistIsNotPublic()
-        {
-            var command = new DownloadLink.Command
-            {
-                Id = 1,
-                YoutubeFileType = YoutubeFileType.MP3,
-            };
-
-            var linkRepository = Substitute.For<ILinkRepository>();
-            var authService = Substitute.For<IAuthService>();
-            var mediator = Substitute.For<IMediator>();
-
-            linkRepository.Get(Arg.Any<int>()).Returns(new Link()
-            {
-                Playlist = new Playlist()
-                {
-                    UserId = 1,
-                    Public = false,
-                }
+                var handler = new DownloadLinkFeature.Handler(_authService, linkRepository, _youtubeService);
+                return handler.Handle(callInfo.Arg<DownloadLink.Command>(), CancellationToken.None);
             });
-            authService.IsLoggedInUser(Arg.Any<int>()).Returns(false);
 
-            mediator.Send(Arg.Any<DownloadLink.Command>(), CancellationToken.None)
-                .Returns(callInfo =>
-                {
-                    var handler = new DownloadLinkFeature.Handler(authService, linkRepository, _youtubeService);
-                    return handler.Handle(callInfo.Arg<DownloadLink.Command>(), CancellationToken.None);
-                });
+        var action = async () => await mediator.Send(command, CancellationToken.None);
 
-            var action = async () => await mediator.Send(command, CancellationToken.None);
+        await Assert.ThrowsAsync<MyNotFoundException>(action);
+    }
 
-            await Assert.ThrowsAsync<MyForbiddenException>(action);
-        }
-
-        [Fact]
-        public async Task DownloadLinkHandler_UserPlaylist_ReturnsYoutubeFile()
+    [Fact]
+    public async Task
+        DownloadLinkHandler_ThrowsForbiddenException_IfPlaylistIsNotOwnedByLoggedInUserOrPlaylistIsNotPublic()
+    {
+        var command = new DownloadLink.Command
         {
-            var command = new DownloadLink.Command
-            {
-                Id = 1,
-                YoutubeFileType = YoutubeFileType.MP3,
-            };
-            var youtubeFile = new YoutubeFile();
+            Id = 1,
+            YoutubeFileType = YoutubeFileType.Mp3
+        };
 
-            var linkRepository = Substitute.For<ILinkRepository>();
-            var authService = Substitute.For<IAuthService>();
-            var youtubeService = Substitute.For<IYoutubeService>();
-            var mediator = Substitute.For<IMediator>();
+        var linkRepository = Substitute.For<ILinkRepository>();
+        var authService = Substitute.For<IAuthService>();
+        var mediator = Substitute.For<IMediator>();
 
-            linkRepository.Get(Arg.Any<int>()).Returns(new Link()
-            {
-                Playlist = new Playlist()
-                {
-                    UserId = 1,
-                    Public = false,
-                }
-            });
-            authService.IsLoggedInUser(Arg.Any<int>()).Returns(true);
-            youtubeService.GetMP3File(Arg.Any<string>()).Returns(youtubeFile);
-
-            mediator.Send(Arg.Any<DownloadLink.Command>(), CancellationToken.None)
-                .Returns(callInfo =>
-                {
-                    var handler = new DownloadLinkFeature.Handler(authService, linkRepository, youtubeService);
-                    return handler.Handle(callInfo.Arg<DownloadLink.Command>(), CancellationToken.None);
-                });
-
-            var result = await mediator.Send(command, CancellationToken.None);
-
-            result.Should().Be(youtubeFile);
-            await youtubeService.Received().GetMP3File(Arg.Any<string>());
-            await youtubeService.DidNotReceive().GetMP4File(Arg.Any<string>());
-        }
-
-        [Fact]
-        public async Task DownloadLinkHandler_PublicPlaylist_ReturnsYoutubeFile()
+        linkRepository.Get(Arg.Any<int>()).Returns(new Link
         {
-            var command = new DownloadLink.Command
+            Playlist = new Playlist
             {
-                Id = 1,
-                YoutubeFileType = YoutubeFileType.MP4,
-            };
-            var youtubeFile = new YoutubeFile();
+                UserId = 1,
+                Public = false
+            }
+        });
+        authService.IsLoggedInUser(Arg.Any<int>()).Returns(false);
 
-            var linkRepository = Substitute.For<ILinkRepository>();
-            var authService = Substitute.For<IAuthService>();
-            var youtubeService = Substitute.For<IYoutubeService>();
-            var mediator = Substitute.For<IMediator>();
-
-            linkRepository.Get(Arg.Any<int>()).Returns(new Link()
+        mediator.Send(Arg.Any<DownloadLink.Command>(), CancellationToken.None)
+            .Returns(callInfo =>
             {
-                Playlist = new Playlist()
-                {
-                    UserId = 1,
-                    Public = true,
-                }
+                var handler = new DownloadLinkFeature.Handler(authService, linkRepository, _youtubeService);
+                return handler.Handle(callInfo.Arg<DownloadLink.Command>(), CancellationToken.None);
             });
-            authService.IsLoggedInUser(Arg.Any<int>()).Returns(false);
-            youtubeService.GetMP4File(Arg.Any<string>()).Returns(youtubeFile);
 
-            mediator.Send(Arg.Any<DownloadLink.Command>(), CancellationToken.None)
-                .Returns(callInfo =>
-                {
-                    var handler = new DownloadLinkFeature.Handler(authService, linkRepository, youtubeService);
-                    return handler.Handle(callInfo.Arg<DownloadLink.Command>(), CancellationToken.None);
-                });
+        var action = async () => await mediator.Send(command, CancellationToken.None);
 
-            var result = await mediator.Send(command, CancellationToken.None);
+        await Assert.ThrowsAsync<MyForbiddenException>(action);
+    }
 
-            result.Should().Be(youtubeFile);
-            await youtubeService.Received().GetMP4File(Arg.Any<string>());
-            await youtubeService.DidNotReceive().GetMP3File(Arg.Any<string>());
-        }
+    [Fact]
+    public async Task DownloadLinkHandler_UserPlaylist_ReturnsYoutubeFile()
+    {
+        var command = new DownloadLink.Command
+        {
+            Id = 1,
+            YoutubeFileType = YoutubeFileType.Mp3
+        };
+        var youtubeFile = new YoutubeFile();
+
+        var linkRepository = Substitute.For<ILinkRepository>();
+        var authService = Substitute.For<IAuthService>();
+        var youtubeService = Substitute.For<IYoutubeService>();
+        var mediator = Substitute.For<IMediator>();
+
+        linkRepository.Get(Arg.Any<int>()).Returns(new Link
+        {
+            Playlist = new Playlist
+            {
+                UserId = 1,
+                Public = false
+            }
+        });
+        authService.IsLoggedInUser(Arg.Any<int>()).Returns(true);
+        youtubeService.GetMp3File(Arg.Any<string>()).Returns(youtubeFile);
+
+        mediator.Send(Arg.Any<DownloadLink.Command>(), CancellationToken.None)
+            .Returns(callInfo =>
+            {
+                var handler = new DownloadLinkFeature.Handler(authService, linkRepository, youtubeService);
+                return handler.Handle(callInfo.Arg<DownloadLink.Command>(), CancellationToken.None);
+            });
+
+        var result = await mediator.Send(command, CancellationToken.None);
+
+        result.Should().Be(youtubeFile);
+        await youtubeService.Received().GetMp3File(Arg.Any<string>());
+        await youtubeService.DidNotReceive().GetMp4File(Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task DownloadLinkHandler_PublicPlaylist_ReturnsYoutubeFile()
+    {
+        var command = new DownloadLink.Command
+        {
+            Id = 1,
+            YoutubeFileType = YoutubeFileType.Mp4
+        };
+        var youtubeFile = new YoutubeFile();
+
+        var linkRepository = Substitute.For<ILinkRepository>();
+        var authService = Substitute.For<IAuthService>();
+        var youtubeService = Substitute.For<IYoutubeService>();
+        var mediator = Substitute.For<IMediator>();
+
+        linkRepository.Get(Arg.Any<int>()).Returns(new Link
+        {
+            Playlist = new Playlist
+            {
+                UserId = 1,
+                Public = true
+            }
+        });
+        authService.IsLoggedInUser(Arg.Any<int>()).Returns(false);
+        youtubeService.GetMp4File(Arg.Any<string>()).Returns(youtubeFile);
+
+        mediator.Send(Arg.Any<DownloadLink.Command>(), CancellationToken.None)
+            .Returns(callInfo =>
+            {
+                var handler = new DownloadLinkFeature.Handler(authService, linkRepository, youtubeService);
+                return handler.Handle(callInfo.Arg<DownloadLink.Command>(), CancellationToken.None);
+            });
+
+        var result = await mediator.Send(command, CancellationToken.None);
+
+        result.Should().Be(youtubeFile);
+        await youtubeService.Received().GetMp4File(Arg.Any<string>());
+        await youtubeService.DidNotReceive().GetMp3File(Arg.Any<string>());
     }
 }

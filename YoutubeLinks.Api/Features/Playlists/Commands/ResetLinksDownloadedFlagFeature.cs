@@ -6,52 +6,43 @@ using YoutubeLinks.Shared.Exceptions;
 using YoutubeLinks.Shared.Features.Playlists.Commands;
 using YoutubeLinks.Shared.Features.Users.Helpers;
 
-namespace YoutubeLinks.Api.Features.Playlists.Commands
+namespace YoutubeLinks.Api.Features.Playlists.Commands;
+
+public static class ResetLinksDownloadedFlagFeature
 {
-    public static class ResetLinksDownloadedFlagFeature
+    public static void Endpoint(this IEndpointRouteBuilder app)
     {
-        public static IEndpointRouteBuilder Endpoint(this IEndpointRouteBuilder app)
-        {
-            app.MapPost("/api/playlists/resetDownloadedFlag", async (
+        app.MapPost("/api/playlists/resetDownloadedFlag", async (
                 ResetLinksDownloadedFlag.Command command,
                 IMediator mediator,
                 CancellationToken cancellationToken) =>
             {
                 return Results.Ok(await mediator.Send(command, cancellationToken));
             })
-                .WithTags(Tags.Playlists)
-                .RequireAuthorization(Policy.User);
+            .WithTags(Tags.Playlists)
+            .RequireAuthorization(Policy.User);
+    }
 
-            return app;
-        }
-
-        public class Handler : IRequestHandler<ResetLinksDownloadedFlag.Command, Unit>
+    public class Handler(
+        IPlaylistRepository playlistRepository,
+        IAuthService authService)
+        : IRequestHandler<ResetLinksDownloadedFlag.Command, Unit>
+    {
+        public async Task<Unit> Handle(
+            ResetLinksDownloadedFlag.Command command,
+            CancellationToken cancellationToken)
         {
-            private readonly IPlaylistRepository _playlistRepository;
-            private readonly IAuthService _authService;
+            var playlist = await playlistRepository.Get(command.Id) ?? throw new MyNotFoundException();
 
-            public Handler(
-                IPlaylistRepository playlistRepository,
-                IAuthService authService)
+            var isUserPlaylist = authService.IsLoggedInUser(playlist.UserId);
+            if (!isUserPlaylist)
             {
-                _playlistRepository = playlistRepository;
-                _authService = authService;
+                throw new MyForbiddenException();
             }
 
-            public async Task<Unit> Handle(
-                ResetLinksDownloadedFlag.Command command,
-                CancellationToken cancellationToken)
-            {
-                var playlist = await _playlistRepository.Get(command.Id) ?? throw new MyNotFoundException();
+            await playlistRepository.SetLinksDownloadedFlag(playlist, command.IsDownloaded);
 
-                var isUserPlaylist = _authService.IsLoggedInUser(playlist.UserId);
-                if (!isUserPlaylist)
-                    throw new MyForbiddenException();
-
-                await _playlistRepository.SetLinksDownloadedFlag(playlist, command.IsDownloaded);
-
-                return Unit.Value;
-            }
+            return Unit.Value;
         }
     }
 }

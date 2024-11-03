@@ -1,9 +1,9 @@
 ﻿@inherits LayoutComponentBase
 
-<MudThemeProvider @ref=@_mudThemeProvider
-                  @bind-IsDarkMode=@_isDarkMode
+<MudThemeProvider @bind-IsDarkMode="_isDarkMode"
+                  @ref="_mudThemeProvider"
                   Theme="_customTheme" />
-<MudDialogProvider FullWidth=true />
+<MudDialogProvider FullWidth="true" />
 <MudSnackbarProvider />
 <MudPopoverProvider />
 
@@ -16,7 +16,7 @@
         color: var(--mud-palette-error) !important;
         margin-top: 5px;
     }
-    
+
     .my-link:hover {
         color: var(--mud-palette-primary) !important;
     }
@@ -24,48 +24,49 @@
 
 <MudLayout>
     <MudAppBar>
-        <MudIconButton Icon=@Icons.Material.Filled.Menu
-                       Color=Color.Inherit
-                       Edge=Edge.Start
-                       OnClick=DrawerToggle
-                       UserAttributes=@(new() { { TestConst.TestId, MainLayoutConst.ToggleNavMenuButton } }) />
-        @Localizer[nameof(AppStrings.AppName)]
+        <MudIconButton Color="Color.Inherit"
+                       Edge="Edge.Start"
+                       Icon="@Icons.Material.Filled.Menu"
+                       OnClick="DrawerToggle"
+                       UserAttributes="@(new Dictionary<string, object> { { TestConst.TestId, MainLayoutConst.ToggleNavMenuButton } })" />
+        @localizer[nameof(AppStrings.AppName)]
         <MudSpacer />
-        <FritzTooltip Text=@_text>
-            <MudIconButton Icon=@_icon
-                           Color=Color.Inherit
-                           OnClick=OnThemeChange
+        <FritzTooltip Text="@_text">
+            <MudIconButton Color="Color.Inherit"
+                           Icon="@_icon"
+                           OnClick="OnThemeChange"
                            Style="margin-right: 5px;"
-                           UserAttributes=@(new() { { TestConst.TestId, MainLayoutConst.ChangeThemeButton } }) />
+                           UserAttributes="@(new Dictionary<string, object> { { TestConst.TestId, MainLayoutConst.ChangeThemeButton } })" />
         </FritzTooltip>
-        <FritzTooltip Text=@Localizer[nameof(AppStrings.CheckProjectOnGithubText)]>
-            <MudIconButton Icon=@Icons.Custom.Brands.GitHub
-                           Color=Color.Inherit
-                           Href=https://github.com/FritzTheCat9/YoutubeLinks
-                           Target=_blank
+        <FritzTooltip Text="@localizer[nameof(AppStrings.CheckProjectOnGithubText)]">
+            <MudIconButton Color="Color.Inherit"
+                           Href="https://github.com/FritzTheCat9/YoutubeLinks"
+                           Icon="@Icons.Custom.Brands.GitHub"
                            Style="margin-right: 5px;"
-                           UserAttributes=@(new() { { TestConst.TestId, MainLayoutConst.RedirectToProjectGithubPageButton } }) />
+                           Target="_blank"
+                           UserAttributes="@(new Dictionary<string, object> { { TestConst.TestId, MainLayoutConst.RedirectToProjectGithubPageButton } })" />
         </FritzTooltip>
-        <Auth ChangeThemeColor="ChangeThemeColor" UserChanged="UserChanged" />
+        <Auth ChangeThemeColor="ChangeThemeColor"
+              UserChanged="UserChanged" />
     </MudAppBar>
-    <MudDrawer @bind-Open=_drawerOpen
-               Variant=DrawerVariant.Mini>
+    <MudDrawer @bind-Open="_drawerOpen"
+               Variant="DrawerVariant.Mini">
         <NavMenu UserId="UserId" />
     </MudDrawer>
     <MudMainContent>
-        <MudContainer MaxWidth=MaxWidth.Large
+        <MudContainer MaxWidth="MaxWidth.Large"
                       Style="margin-top: 20px; margin-bottom: 80px">
             @Body
         </MudContainer>
     </MudMainContent>
-    <MudAppBar Bottom=true
-               Dense=true
-               Color=Color.Transparent
-               Elevation=0>
-        <MudPaper Class="pa-4 mb-4"
-                  Elevation=3>
+    <MudAppBar Bottom="true"
+               Color="Color.Transparent"
+               Dense="true"
+               Elevation="0">
+        <MudPaper Class="mb-4 pa-4"
+                  Elevation="3">
             <MudText Typo="Typo.body1">
-                @Localizer[nameof(AppStrings.CreatedByText)]
+                @localizer[nameof(AppStrings.CreatedByText)]
             </MudText>
         </MudPaper>
     </MudAppBar>

@@ -12,186 +12,178 @@ using YoutubeLinks.Shared.Features.Links.Helpers;
 using YoutubeLinks.Shared.Features.Links.Queries;
 using YoutubeLinks.Shared.Features.Playlists.Responses;
 
-namespace YoutubeLinks.Blazor.Pages.Playlists
+namespace YoutubeLinks.Blazor.Pages.Playlists;
+
+public partial class DownloadPlaylistPage(
+    IExceptionHandler exceptionHandler,
+    ILinkApiClient linkApiClient,
+    IPlaylistApiClient playlistApiClient,
+    IAuthService authService,
+    IStringLocalizer<App> localizer,
+    NavigationManager navigationManager,
+    IJSRuntime jsRuntime)
+    : ComponentBase
 {
-    public partial class DownloadPlaylistPage : ComponentBase
+    private int _allSongsNumber;
+    private int _downloadedSongsNumber;
+    private bool _downloading;
+    private string _downloadingSongTitle = "";
+    private List<DownloadLinkResult> _downloadLinkResults = [];
+    private double _downloadPercent;
+    private bool _isUserPlaylist;
+    private List<BreadcrumbItem> _items;
+    private List<GetAllLinks.LinkInfoDto> _linkInfoList;
+    private PlaylistDto _playlist;
+    private FritzProcessingButton _processingButton;
+    private YoutubeFileType _youtubeFileType = YoutubeFileType.Mp3;
+
+    [Parameter] public int PlaylistId { get; set; }
+
+    protected override async Task OnParametersSetAsync()
     {
-        private List<BreadcrumbItem> _items;
-        private FritzProcessingButton _processingButton;
-
-        private bool _isUserPlaylist = false;
-
-        private PlaylistDto _playlist;
-        private List<GetAllLinks.LinkInfoDto> _linkInfoList;
-        private YoutubeFileType _youtubeFileType = YoutubeFileType.MP3;
-
-        private List<DownloadLinkResult> _downloadLinkResults = [];
-
-        private class DownloadLinkResult
+        try
         {
-            public GetAllLinks.LinkInfoDto Link { get; set; }
-            public bool Success { get; set; }
+            _playlist = await playlistApiClient.GetPlaylist(PlaylistId);
+        }
+        catch (Exception ex)
+        {
+            exceptionHandler.HandleExceptions(ex);
         }
 
-        private bool _downloading;
-        private int _downloadedSongsNumber;
-        private int _allSongsNumber;
-        private double _downloadPercent;
-        private string _downloadingSongTitle = "";
+        _items =
+        [
+            new BreadcrumbItem(localizer[nameof(AppStrings.Users)], "/users"),
+            new BreadcrumbItem(localizer[nameof(AppStrings.Playlists)], $"/playlists/{_playlist.UserId}"),
+            new BreadcrumbItem(localizer[nameof(AppStrings.DownloadPlaylist)], null, true)
+        ];
 
-        public class DownloadPlaylistPageConst
+        _isUserPlaylist = await authService.IsLoggedInUser(_playlist.UserId);
+
+        if (!_playlist.Public && !_isUserPlaylist)
         {
-            public const string YoutubeFileTypeSelect = "download-playlist-page-youtube-file-type-select";
-            public const string DownloadButton = "download-playlist-page-download-button";
+            navigationManager.NavigateTo("/error/forbidden-error");
         }
 
-        [Parameter] public int PlaylistId { get; set; }
+        await LoadLinkInformation();
+    }
 
-        [Inject] public IExceptionHandler ExceptionHandler { get; set; }
-        [Inject] public ILinkApiClient LinkApiClient { get; set; }
-        [Inject] public IPlaylistApiClient PlaylistApiClient { get; set; }
-
-        [Inject] public IAuthService AuthService { get; set; }
-        [Inject] public IStringLocalizer<App> Localizer { get; set; }
-
-        [Inject] public IDialogService DialogService { get; set; }
-        [Inject] public NavigationManager NavigationManager { get; set; }
-        [Inject] public IJSRuntime JSRuntime { get; set; }
-
-        protected override async Task OnParametersSetAsync()
+    private async Task LoadLinkInformation()
+    {
+        try
         {
-            try
+            var query = new GetAllLinks.Query
             {
-                _playlist = await PlaylistApiClient.GetPlaylist(PlaylistId);
-            }
-            catch (Exception ex)
-            {
-                ExceptionHandler.HandleExceptions(ex);
-            }
-
-            _items =
-            [
-                new(Localizer[nameof(AppStrings.Users)], href: $"/users"),
-                new(Localizer[nameof(AppStrings.Playlists)],  href: $"/playlists/{_playlist.UserId}"),
-                new(Localizer[nameof(AppStrings.DownloadPlaylist)], href: null, disabled: true),
-            ];
-
-            _isUserPlaylist = await AuthService.IsLoggedInUser(_playlist.UserId);
-
-            if (!_playlist.Public && !_isUserPlaylist)
-            {
-                NavigationManager.NavigateTo("/error/forbidden-error");
-            }
-
-            await LoadLinkInformation();
-        }
-
-        private async Task LoadLinkInformation()
-        {
-            try
-            {
-                var query = new GetAllLinks.Query
-                {
-                    PlaylistId = PlaylistId,
-                    Downloaded = false,
-                };
-
-                _linkInfoList = (await LinkApiClient.GetAllLinks(query)).ToList();
-            }
-            catch (Exception ex)
-            {
-                ExceptionHandler.HandleExceptions(ex);
-            }
-        }
-
-        private async Task DownloadPlaylistLinks()
-        {
-            try
-            {
-                await LoadLinkInformation();
-
-                _downloading = true;
-                _allSongsNumber = _linkInfoList.Count;
-                _processingButton.SetProcessing(true);
-
-                _downloadLinkResults = [];
-                _downloadedSongsNumber = 0;
-                _downloadPercent = 0;
-                _downloadingSongTitle = "";
-
-                foreach (var link in _linkInfoList)
-                {
-                    _downloadingSongTitle = link.Title;
-
-                    StateHasChanged();
-
-                    await DownloadPlaylistLink(link, _youtubeFileType);
-                }
-            }
-            catch (Exception ex)
-            {
-                ExceptionHandler.HandleExceptions(ex);
-            }
-            finally
-            {
-                _downloading = false;
-                _processingButton.SetProcessing(false);
-            }
-        }
-
-        private async Task DownloadPlaylistLink(GetAllLinks.LinkInfoDto link, YoutubeFileType youtubeFileType)
-        {
-            try
-            {
-                var command = new DownloadLink.Command
-                {
-                    Id = link.Id,
-                    YoutubeFileType = youtubeFileType,
-                };
-
-                var response = await LinkApiClient.DownloadLink(command);
-
-                using (var stream = await response.Content.ReadAsStreamAsync())
-                {
-                    var streamRef = new DotNetStreamReference(stream);
-                    var filename = response.Content.Headers.ContentDisposition.FileNameStar ?? $"default_name.{YoutubeHelpers.YoutubeFileTypeToString(command.YoutubeFileType)}";
-
-                    await JSRuntime.InvokeVoidAsync("downloadFile", filename, streamRef);
-                }
-
-                await SetLinkAsDownloaded(link.Id);
-
-                _downloadLinkResults.Insert(0, new()
-                {
-                    Link = link,
-                    Success = true,
-                });
-
-            }
-            catch (Exception)
-            {
-                _downloadLinkResults.Insert(0, new()
-                {
-                    Link = link,
-                    Success = false,
-                });
-            }
-
-            _downloadedSongsNumber++;
-            _downloadPercent = (double)_downloadedSongsNumber / _allSongsNumber * 100;
-
-            StateHasChanged();
-        }
-
-        private async Task SetLinkAsDownloaded(int id)
-        {
-            var command = new SetLinkDownloadedFlag.Command
-            {
-                Id = id,
-                Downloaded = true,
+                PlaylistId = PlaylistId,
+                Downloaded = false
             };
 
-            await LinkApiClient.SetLinkDownloadedFlag(command);
+            _linkInfoList = (await linkApiClient.GetAllLinks(query)).ToList();
         }
+        catch (Exception ex)
+        {
+            exceptionHandler.HandleExceptions(ex);
+        }
+    }
+
+    private async Task DownloadPlaylistLinks()
+    {
+        try
+        {
+            await LoadLinkInformation();
+
+            _downloading = true;
+            _allSongsNumber = _linkInfoList.Count;
+            _processingButton.SetProcessing(true);
+
+            _downloadLinkResults = [];
+            _downloadedSongsNumber = 0;
+            _downloadPercent = 0;
+            _downloadingSongTitle = "";
+
+            foreach (var link in _linkInfoList)
+            {
+                _downloadingSongTitle = link.Title;
+
+                StateHasChanged();
+
+                await DownloadPlaylistLink(link, _youtubeFileType);
+            }
+        }
+        catch (Exception ex)
+        {
+            exceptionHandler.HandleExceptions(ex);
+        }
+        finally
+        {
+            _downloading = false;
+            _processingButton.SetProcessing(false);
+        }
+    }
+
+    private async Task DownloadPlaylistLink(GetAllLinks.LinkInfoDto link, YoutubeFileType youtubeFileType)
+    {
+        try
+        {
+            var command = new DownloadLink.Command
+            {
+                Id = link.Id,
+                YoutubeFileType = youtubeFileType
+            };
+
+            var response = await linkApiClient.DownloadLink(command);
+
+            await using (var stream = await response.Content.ReadAsStreamAsync())
+            {
+                var streamRef = new DotNetStreamReference(stream);
+                var filename = response.Content.Headers.ContentDisposition?.FileNameStar ??
+                               $"default_name.{YoutubeHelpers.YoutubeFileTypeToString(command.YoutubeFileType)}";
+
+                await jsRuntime.InvokeVoidAsync("downloadFile", filename, streamRef);
+            }
+
+            await SetLinkAsDownloaded(link.Id);
+
+            _downloadLinkResults.Insert(0, new DownloadLinkResult
+            {
+                Link = link,
+                Success = true
+            });
+        }
+        catch (Exception)
+        {
+            _downloadLinkResults.Insert(0, new DownloadLinkResult
+            {
+                Link = link,
+                Success = false
+            });
+        }
+
+        _downloadedSongsNumber++;
+        _downloadPercent = (double)_downloadedSongsNumber / _allSongsNumber * 100;
+
+        StateHasChanged();
+    }
+
+    private async Task SetLinkAsDownloaded(int id)
+    {
+        var command = new SetLinkDownloadedFlag.Command
+        {
+            Id = id,
+            Downloaded = true
+        };
+
+        await linkApiClient.SetLinkDownloadedFlag(command);
+    }
+
+    private class DownloadLinkResult
+    {
+        public GetAllLinks.LinkInfoDto Link { get; init; }
+        public bool Success { get; init; }
+    }
+
+    public abstract class DownloadPlaylistPageConst
+    {
+        public const string YoutubeFileTypeSelect = "download-playlist-page-youtube-file-type-select";
+        public const string DownloadButton = "download-playlist-page-download-button";
     }
 }

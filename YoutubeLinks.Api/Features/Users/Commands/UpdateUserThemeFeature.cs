@@ -7,13 +7,13 @@ using YoutubeLinks.Shared.Exceptions;
 using YoutubeLinks.Shared.Features.Users.Commands;
 using YoutubeLinks.Shared.Features.Users.Helpers;
 
-namespace YoutubeLinks.Api.Features.Users.Commands
+namespace YoutubeLinks.Api.Features.Users.Commands;
+
+public static class UpdateUserThemeFeature
 {
-    public static class UpdateUserThemeFeature
+    public static void Endpoint(this IEndpointRouteBuilder app)
     {
-        public static IEndpointRouteBuilder Endpoint(this IEndpointRouteBuilder app)
-        {
-            app.MapPut("/api/users/{id}/theme", async (
+        app.MapPut("/api/users/{id:int}/theme", async (
                 int id,
                 UpdateUserTheme.Command command,
                 IMediator mediator,
@@ -22,44 +22,33 @@ namespace YoutubeLinks.Api.Features.Users.Commands
                 command.Id = id;
                 return Results.Ok(await mediator.Send(command, cancellationToken));
             })
-                .WithTags(Tags.Users)
-                .RequireAuthorization(Policy.User);
+            .WithTags(Tags.Users)
+            .RequireAuthorization(Policy.User);
+    }
 
-            return app;
-        }
-
-        public class Handler : IRequestHandler<UpdateUserTheme.Command, Unit>
+    public class Handler(
+        IUserRepository userRepository,
+        IAuthService authService,
+        IClock clock)
+        : IRequestHandler<UpdateUserTheme.Command, Unit>
+    {
+        public async Task<Unit> Handle(
+            UpdateUserTheme.Command command,
+            CancellationToken cancellationToken)
         {
-            private readonly IUserRepository _userRepository;
-            private readonly IAuthService _authService;
-            private readonly IClock _clock;
-
-            public Handler(
-                IUserRepository userRepository,
-                IAuthService authService,
-                IClock clock)
+            var isLoggedInUser = authService.IsLoggedInUser(command.Id);
+            if (!isLoggedInUser)
             {
-                _userRepository = userRepository;
-                _authService = authService;
-                _clock = clock;
+                throw new MyForbiddenException();
             }
 
-            public async Task<Unit> Handle(
-                UpdateUserTheme.Command command,
-                CancellationToken cancellationToken)
-            {
-                var isLoggedInUser = _authService.IsLoggedInUser(command.Id);
-                if (!isLoggedInUser)
-                    throw new MyForbiddenException();
+            var user = await userRepository.Get(command.Id) ?? throw new MyNotFoundException();
 
-                var user = await _userRepository.Get(command.Id) ?? throw new MyNotFoundException();
+            user.ThemeColor = command.ThemeColor;
+            user.Modified = clock.Current();
 
-                user.ThemeColor = command.ThemeColor;
-                user.Modified = _clock.Current();
-
-                await _userRepository.Update(user);
-                return Unit.Value;
-            }
+            await userRepository.Update(user);
+            return Unit.Value;
         }
     }
 }

@@ -1,53 +1,36 @@
 ﻿using YoutubeLinks.Shared.Features.Links.Helpers;
 
-namespace YoutubeLinks.Api.Services
+namespace YoutubeLinks.Api.Services;
+
+public interface IYoutubeDownloader
 {
-    public interface IYoutubeDownloader
+    Task<YoutubeFile> Download(string videoId, string videoTitle = null);
+}
+
+public class Mp3YoutubeDownloader(IYoutubeService youtubeService) : IYoutubeDownloader
+{
+    public async Task<YoutubeFile> Download(string videoId, string videoTitle = null)
     {
-        Task<YoutubeFile> Download(string videoId, string videoTitle = null);
+        return await youtubeService.GetMp3File(videoId, videoTitle);
     }
+}
 
-    public class MP3YoutubeDownloader : IYoutubeDownloader
+public class Mp4YoutubeDownloader(IYoutubeService youtubeService) : IYoutubeDownloader
+{
+    public async Task<YoutubeFile> Download(string videoId, string videoTitle = null)
     {
-        private readonly IYoutubeService _youtubeService;
-
-        public MP3YoutubeDownloader(
-            IYoutubeService youtubeService)
-        {
-            _youtubeService = youtubeService;
-        }
-
-        public async Task<YoutubeFile> Download(string videoId, string videoTitle = null)
-        {
-            return await _youtubeService.GetMP3File(videoId, videoTitle);
-        }
+        return await youtubeService.GetMp4File(videoId, videoTitle);
     }
+}
 
-    public class MP4YoutubeDownloader : IYoutubeDownloader
+public static class YoutubeDownloaderHelpers
+{
+    public static IYoutubeDownloader GetYoutubeDownloader(YoutubeFileType fileType, IYoutubeService youtubeService)
     {
-        private readonly IYoutubeService _youtubeService;
-
-        public MP4YoutubeDownloader(
-            IYoutubeService youtubeService)
+        return fileType switch
         {
-            _youtubeService = youtubeService;
-        }
-
-        public async Task<YoutubeFile> Download(string videoId, string videoTitle = null)
-        {
-            return await _youtubeService.GetMP4File(videoId, videoTitle);
-        }
-    }
-
-    public static class YoutubeDownloaderHelpers
-    {
-        public static IYoutubeDownloader GetYoutubeDownloader(YoutubeFileType fileType, IYoutubeService youtubeService)
-        {
-            return fileType switch
-            {
-                YoutubeFileType.MP4 => new MP4YoutubeDownloader(youtubeService),
-                _ => new MP3YoutubeDownloader(youtubeService),
-            };
-        }
+            YoutubeFileType.Mp4 => new Mp4YoutubeDownloader(youtubeService),
+            _ => new Mp3YoutubeDownloader(youtubeService)
+        };
     }
 }

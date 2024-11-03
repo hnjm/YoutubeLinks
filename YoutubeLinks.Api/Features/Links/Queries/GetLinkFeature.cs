@@ -7,53 +7,44 @@ using YoutubeLinks.Shared.Exceptions;
 using YoutubeLinks.Shared.Features.Links.Queries;
 using YoutubeLinks.Shared.Features.Links.Responses;
 
-namespace YoutubeLinks.Api.Features.Links.Queries
+namespace YoutubeLinks.Api.Features.Links.Queries;
+
+public static class GetLinkFeature
 {
-    public static class GetLinkFeature
+    public static void Endpoint(this IEndpointRouteBuilder app)
     {
-        public static IEndpointRouteBuilder Endpoint(this IEndpointRouteBuilder app)
-        {
-            app.MapGet("/api/links/{id}", async (
+        app.MapGet("/api/links/{id:int}", async (
                 int id,
                 IMediator mediator,
                 CancellationToken cancellationToken) =>
             {
-                var query = new GetLink.Query() { Id = id };
+                var query = new GetLink.Query { Id = id };
                 return Results.Ok(await mediator.Send(query, cancellationToken));
             })
-                .WithName("GetLink")
-                .WithTags(Tags.Links)
-                .AllowAnonymous();
+            .WithName("GetLink")
+            .WithTags(Tags.Links)
+            .AllowAnonymous();
+    }
 
-            return app;
-        }
-
-        public class Handler : IRequestHandler<GetLink.Query, LinkDto>
+    public class Handler(
+        ILinkRepository linkRepository,
+        IAuthService authService)
+        : IRequestHandler<GetLink.Query, LinkDto>
+    {
+        public async Task<LinkDto> Handle(
+            GetLink.Query query,
+            CancellationToken cancellationToken)
         {
-            private readonly ILinkRepository _linkRepository;
-            private readonly IAuthService _authService;
+            var link = await linkRepository.Get(query.Id) ?? throw new MyNotFoundException();
 
-            public Handler(
-                ILinkRepository linkRepository,
-                IAuthService authService)
+            var isUserPlaylist = authService.IsLoggedInUser(link.Playlist.UserId);
+            if (!link.Playlist.Public
+                && !isUserPlaylist)
             {
-                _linkRepository = linkRepository;
-                _authService = authService;
+                throw new MyForbiddenException();
             }
 
-            public async Task<LinkDto> Handle(
-                GetLink.Query query,
-                CancellationToken cancellationToken)
-            {
-                var link = await _linkRepository.Get(query.Id) ?? throw new MyNotFoundException();
-
-                var isUserPlaylist = _authService.IsLoggedInUser(link.Playlist.UserId);
-                if (!link.Playlist.Public
-                    && !isUserPlaylist)
-                    throw new MyForbiddenException();
-
-                return link.ToDto();
-            }
+            return link.ToDto();
         }
     }
 }

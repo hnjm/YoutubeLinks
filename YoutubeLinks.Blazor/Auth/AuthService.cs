@@ -1,123 +1,134 @@
-﻿using Microsoft.AspNetCore.Components;
+﻿using System.Security.Claims;
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
-using System.Security.Claims;
 using YoutubeLinks.Blazor.Clients;
+using YoutubeLinks.Shared.Features.Users.Commands;
 using YoutubeLinks.Shared.Features.Users.Responses;
 
-namespace YoutubeLinks.Blazor.Auth
+namespace YoutubeLinks.Blazor.Auth;
+
+public interface IAuthService
 {
-    public interface IAuthService
+    Task<int?> GetCurrentUserId();
+    Task<bool> IsLoggedInUser(int userId);
+    Task Login(JwtDto token, string redirectUrl = null);
+    Task Logout(string redirectUrl = null);
+    Task RefreshToken();
+}
+
+public class AuthService(
+    AuthenticationStateProvider stateProvider,
+    IJwtProvider jwtProvider,
+    IUserApiClient userApiClient,
+    NavigationManager navigationManager)
+    : IAuthService
+{
+    public async Task<int?> GetCurrentUserId()
     {
-        Task<int?> GetCurrentUserId();
-        Task<bool> IsLoggedInUser(int userId);
-        Task Login(JwtDto token, string redirectUrl = null);
-        Task Logout(string redirectUrl = null);
-        Task RefreshToken();
-    }
-
-    public class AuthService : IAuthService
-    {
-        private readonly AuthenticationStateProvider _authStateProvider;
-        private readonly IJwtProvider _jwtProvider;
-        private readonly IUserApiClient _userApiClient;
-        private readonly NavigationManager _navigationManager;
-
-        public AuthService(
-            AuthenticationStateProvider authStateProvider,
-            IJwtProvider jwtProvider,
-            IUserApiClient userApiClient,
-            NavigationManager navigationManager)
+        if (stateProvider is not AuthStateProvider authStateProvider)
         {
-            _authStateProvider = authStateProvider;
-            _jwtProvider = jwtProvider;
-            _userApiClient = userApiClient;
-            _navigationManager = navigationManager;
-        }
-
-        public async Task<int?> GetCurrentUserId()
-        {
-            var authStateProvider = (_authStateProvider as AuthStateProvider);
-            var authState = await authStateProvider.GetAuthenticationStateAsync();
-            var user = authState.User;
-
-            if (user.Identity?.IsAuthenticated ?? false)
-            {
-                var userIdString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-                if (userIdString == null)
-                    return null;
-
-                if (!int.TryParse(userIdString, out int userIdInt))
-                    return null;
-
-                return userIdInt;
-            }
-
             return null;
         }
 
-        public async Task<bool> IsLoggedInUser(int userId)
+        var authState = await authStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (!(user.Identity?.IsAuthenticated ?? false))
         {
-            var authStateProvider = (_authStateProvider as AuthStateProvider);
-            var authState = await authStateProvider.GetAuthenticationStateAsync();
-            var user = authState.User;
+            return null;
+        }
 
-            if (user.Identity?.IsAuthenticated ?? false)
-            {
-                var userIdString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var userIdString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-                if (userIdString == null)
-                    return false;
+        if (userIdString == null)
+        {
+            return null;
+        }
 
-                if (!int.TryParse(userIdString, out int userIdInt))
-                    return false;
+        if (!int.TryParse(userIdString, out var userIdInt))
+        {
+            return null;
+        }
 
-                if (userId != userIdInt)
-                    return false;
+        return userIdInt;
+    }
 
-                return true;
-            }
-
+    public async Task<bool> IsLoggedInUser(int userId)
+    {
+        if (stateProvider is not AuthStateProvider authStateProvider)
+        {
             return false;
         }
 
-        public async Task Login(JwtDto token, string redirectUrl = null)
+        var authState = await authStateProvider.GetAuthenticationStateAsync();
+
+        var user = authState.User;
+
+        if (!(user.Identity?.IsAuthenticated ?? false))
         {
-            await _jwtProvider.SetJwtDto(token);
-
-            var authStateProvider = (_authStateProvider as AuthStateProvider);
-            authStateProvider.NotifyAuthStateChanged();
-
-            if (!string.IsNullOrEmpty(redirectUrl))
-                _navigationManager.NavigateTo(redirectUrl);
+            return false;
         }
 
-        public async Task Logout(string redirectUrl = null)
+        var userIdString = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+        if (userIdString == null)
         {
-            await _jwtProvider.RemoveJwtDto();
-
-            var authStateProvider = (_authStateProvider as AuthStateProvider);
-            authStateProvider.NotifyAuthStateChanged();
-
-            if (!string.IsNullOrEmpty(redirectUrl))
-                _navigationManager.NavigateTo(redirectUrl);
+            return false;
         }
 
-        public async Task RefreshToken()
+        if (!int.TryParse(userIdString, out var userIdInt))
         {
-            try
-            {
-                var jwt = await _jwtProvider.GetJwtDto();
-                if (jwt == null || string.IsNullOrEmpty(jwt.RefreshToken))
-                    await Logout();
+            return false;
+        }
 
-                var newJwt = await _userApiClient.RefreshToken(new() { RefreshToken = jwt.RefreshToken });
-                await Login(newJwt);
-            }
-            catch (Exception)
+        return userId == userIdInt;
+    }
+
+    public async Task Login(JwtDto token, string redirectUrl = null)
+    {
+        await jwtProvider.SetJwtDto(token);
+
+        var authStateProvider = stateProvider as AuthStateProvider;
+        authStateProvider?.NotifyAuthStateChanged();
+
+        if (!string.IsNullOrEmpty(redirectUrl))
+        {
+            navigationManager.NavigateTo(redirectUrl);
+        }
+    }
+
+    public async Task Logout(string redirectUrl = null)
+    {
+        await jwtProvider.RemoveJwtDto();
+
+        var authStateProvider = stateProvider as AuthStateProvider;
+        authStateProvider?.NotifyAuthStateChanged();
+
+        if (!string.IsNullOrEmpty(redirectUrl))
+        {
+            navigationManager.NavigateTo(redirectUrl);
+        }
+    }
+
+    public async Task RefreshToken()
+    {
+        try
+        {
+            var jwt = await jwtProvider.GetJwtDto();
+            if (jwt is null || string.IsNullOrEmpty(jwt.RefreshToken))
             {
                 await Logout();
             }
+            else
+            {
+                var newJwt = await userApiClient.RefreshToken(new RefreshToken.Command
+                    { RefreshToken = jwt.RefreshToken });
+                await Login(newJwt);
+            }
+        }
+        catch (Exception)
+        {
+            await Logout();
         }
     }
 }

@@ -1,43 +1,32 @@
-﻿using Microsoft.Extensions.Localization;
-using System.Globalization;
+﻿using System.Globalization;
+using Microsoft.Extensions.Localization;
 
-namespace YoutubeLinks.UnitTests.Localization
+namespace YoutubeLinks.UnitTests.Localization;
+
+public class TestStringLocalizer<T> : IStringLocalizer<T>
 {
-    public class TestStringLocalizer<T> : IStringLocalizer<T>
+    private readonly Dictionary<string, string> _localizations = new();
+
+    public LocalizedString this[string name]
+        => new(name, _localizations.TryGetValue(name, out var value) ? value : name, true);
+
+    public LocalizedString this[string name, params object[] arguments]
     {
-        private readonly Dictionary<string, string> _localizations;
-
-        public TestStringLocalizer()
+        get
         {
-            _localizations = new Dictionary<string, string>();
+            var format = _localizations.TryGetValue(name, out var localization) ? localization : name;
+            var formatted = string.Format(CultureInfo.CurrentCulture, format, arguments);
+            return new LocalizedString(name, formatted, true);
         }
+    }
 
-        public LocalizedString this[string name]
-        {
-            get
-            {
-                return new LocalizedString(name, _localizations.ContainsKey(name) ? _localizations[name] : name, true);
-            }
-        }
+    public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures)
+    {
+        throw new NotImplementedException();
+    }
 
-        public LocalizedString this[string name, params object[] arguments]
-        {
-            get
-            {
-                var format = _localizations.ContainsKey(name) ? _localizations[name] : name;
-                var formatted = string.Format(CultureInfo.CurrentCulture, format, arguments);
-                return new LocalizedString(name, formatted, true);
-            }
-        }
-
-        public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void AddTranslation(string key, string value)
-        {
-            _localizations[key] = value;
-        }
+    public void AddTranslation(string key, string value)
+    {
+        _localizations[key] = value;
     }
 }

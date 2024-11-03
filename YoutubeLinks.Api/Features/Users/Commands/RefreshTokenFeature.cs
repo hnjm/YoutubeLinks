@@ -9,66 +9,55 @@ using YoutubeLinks.Shared.Features.Users.Commands;
 using YoutubeLinks.Shared.Features.Users.Helpers;
 using YoutubeLinks.Shared.Features.Users.Responses;
 
-namespace YoutubeLinks.Api.Features.Users.Commands
+namespace YoutubeLinks.Api.Features.Users.Commands;
+
+public static class RefreshTokenFeature
 {
-    public static class RefreshTokenFeature
+    public static void Endpoint(this IEndpointRouteBuilder app)
     {
-        public static IEndpointRouteBuilder Endpoint(this IEndpointRouteBuilder app)
-        {
-            app.MapPost("/api/users/refresh-token", async (
+        app.MapPost("/api/users/refresh-token", async (
                 RefreshToken.Command command,
                 IMediator mediator,
                 CancellationToken cancellationToken) =>
             {
                 return Results.Ok(await mediator.Send(command, cancellationToken));
             })
-                .WithTags(Tags.Users)
-                .RequireAuthorization(Policy.User);
+            .WithTags(Tags.Users)
+            .RequireAuthorization(Policy.User);
+    }
 
-            return app;
-        }
-
-        public class Handler : IRequestHandler<RefreshToken.Command, JwtDto>
+    public class Handler(
+        IAuthService authService,
+        IUserRepository userRepository,
+        IAuthenticator authenticator,
+        IStringLocalizer<ApiValidationMessage> localizer)
+        : IRequestHandler<RefreshToken.Command, JwtDto>
+    {
+        public async Task<JwtDto> Handle(RefreshToken.Command command, CancellationToken cancellationToken)
         {
-            private readonly IAuthService _authService;
-            private readonly IUserRepository _userRepository;
-            private readonly IAuthenticator _authenticator;
-            private readonly IStringLocalizer<ApiValidationMessage> _localizer;
+            var currentUserId = authService.GetCurrentUserId() ?? throw new MyForbiddenException();
+            var user = await userRepository.Get(currentUserId) ?? throw new MyNotFoundException();
 
-            public Handler(
-                IAuthService authService,
-                IUserRepository userRepository,
-                IAuthenticator authenticator,
-                IStringLocalizer<ApiValidationMessage> localizer)
+            if (!user.EmailConfirmed)
             {
-                _authService = authService;
-                _userRepository = userRepository;
-                _authenticator = authenticator;
-                _localizer = localizer;
+                throw new MyValidationException(nameof(Login.Command.Email),
+                    localizer[nameof(ApiValidationMessageString.EmailIsNotConfirmed)]);
             }
 
-            public async Task<JwtDto> Handle(RefreshToken.Command command, CancellationToken cancellationToken)
+            if (user.RefreshToken != command.RefreshToken) // check hashed token = token
             {
-                var currentUserId = _authService.GetCurrentUserId() ?? throw new MyForbiddenException();
-                var user = await _userRepository.Get(currentUserId) ?? throw new MyNotFoundException();
-
-                if (!user.EmailConfirmed)
-                    throw new MyValidationException(nameof(Login.Command.Email),
-                        _localizer[nameof(ApiValidationMessageString.EmailIsNotConfirmed)]);
-
-                if (user.RefreshToken != command.RefreshToken)      // check hashed token = token
-                    throw new MyValidationException(nameof(RefreshToken.Command.RefreshToken),
-                        _localizer[nameof(ApiValidationMessageString.RefreshTokenIsNotValid)]);
-
-                // check if refresh token expired
-
-                var jwt = _authenticator.CreateTokens(user);
-
-                user.RefreshToken = jwt.RefreshToken;
-                await _userRepository.Update(user);
-
-                return jwt;
+                throw new MyValidationException(nameof(RefreshToken.Command.RefreshToken),
+                    localizer[nameof(ApiValidationMessageString.RefreshTokenIsNotValid)]);
             }
+
+            // check if refresh token expired
+
+            var jwt = authenticator.CreateTokens(user);
+
+            user.RefreshToken = jwt.RefreshToken;
+            await userRepository.Update(user);
+
+            return jwt;
         }
     }
 }

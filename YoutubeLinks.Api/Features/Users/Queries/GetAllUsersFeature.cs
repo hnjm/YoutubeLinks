@@ -7,50 +7,39 @@ using YoutubeLinks.Shared.Abstractions;
 using YoutubeLinks.Shared.Features.Users.Queries;
 using YoutubeLinks.Shared.Features.Users.Responses;
 
-namespace YoutubeLinks.Api.Features.Users.Queries
+namespace YoutubeLinks.Api.Features.Users.Queries;
+
+public static class GetAllUsersFeature
 {
-    public static class GetAllUsersFeature
+    public static void Endpoint(this IEndpointRouteBuilder app)
     {
-        public static IEndpointRouteBuilder Endpoint(this IEndpointRouteBuilder app)
-        {
-            app.MapPost("/api/users/all", async (
+        app.MapPost("/api/users/all", async (
                 GetAllUsers.Query query,
                 IMediator mediator,
                 CancellationToken cancellationToken) =>
             {
                 return Results.Ok(await mediator.Send(query, cancellationToken));
             })
-                .WithTags(Tags.Users)
-                .AllowAnonymous();
+            .WithTags(Tags.Users)
+            .AllowAnonymous();
+    }
 
-            return app;
-        }
-
-        public class Handler : IRequestHandler<GetAllUsers.Query, PagedList<UserDto>>
+    public class Handler(IUserRepository userRepository) : IRequestHandler<GetAllUsers.Query, PagedList<UserDto>>
+    {
+        public async Task<PagedList<UserDto>> Handle(
+            GetAllUsers.Query query,
+            CancellationToken cancellationToken)
         {
-            private readonly IUserRepository _userRepository;
+            var usersQuery = userRepository.AsQueryable();
 
-            public Handler(
-                IUserRepository userRepository)
-            {
-                _userRepository = userRepository;
-            }
+            usersQuery = usersQuery.FilterMyUsers(query);
+            usersQuery = usersQuery.SortMyUsers(query);
 
-            public async Task<PagedList<UserDto>> Handle(
-                GetAllUsers.Query query,
-                CancellationToken cancellationToken)
-            {
-                var usersQuery = _userRepository.AsQueryable();
+            var usersPagedList = PageListExtensions<UserDto>.Create(usersQuery.Select(x => x.ToDto()),
+                query.Page,
+                query.PageSize);
 
-                usersQuery = usersQuery.FilterMyUsers(query);
-                usersQuery = usersQuery.SortMyUsers(query);
-
-                var usersPagedList = PageListExtensions<UserDto>.Create(usersQuery.Select(x => x.ToDto()),
-                                                                        query.Page,
-                                                                        query.PageSize);
-
-                return await Task.FromResult(usersPagedList);
-            }
+            return await Task.FromResult(usersPagedList);
         }
     }
 }

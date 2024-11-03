@@ -1,18 +1,14 @@
 ﻿using FluentValidation;
 using MediatR;
 
-namespace YoutubeLinks.Shared.Features.Links.Commands
+namespace YoutubeLinks.Shared.Features.Links.Commands;
+
+public static class DeleteLink
 {
-    public class DeleteLink
+    public class Command : IRequest<Unit>
     {
-        public class Command : IRequest<Unit>
-        {
-            public int Id { get; set; }
-        }
-
-        public class Validator : AbstractValidator<Command>
-        {
-
-        }
+        public int Id { get; init; }
     }
+
+    public class Validator : AbstractValidator<Command> { }
 }

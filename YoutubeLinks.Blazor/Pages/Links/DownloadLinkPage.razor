@@ -2,83 +2,84 @@
 @attribute [AllowAnonymous]
 
 <PageTitle>
-    @Localizer[nameof(AppStrings.DownloadLink)]
+    @localizer[nameof(AppStrings.DownloadLink)]
 </PageTitle>
 
-<FritzBreadcrumbs Items=_items />
+<FritzBreadcrumbs Items="_items" />
 
 <MudPaper Class="pa-4"
-          Elevation=3>
+          Elevation="3">
     <MudText Class="mb-3">
-        @Localizer[nameof(AppStrings.DownloadLink)]
+        @localizer[nameof(AppStrings.DownloadLink)]
     </MudText>
-    <EditForm Model=Command
-              OnValidSubmit=HandleValidSubmit>
-        <CustomValidator @ref=_customValidator />
+    <EditForm Model="Command"
+              OnValidSubmit="HandleValidSubmit">
+        <CustomValidator @ref="_customValidator" />
         <FluentValidationValidator />
 
-        <MudStack Row=true
-                  Justify=Justify.Center
-                  AlignItems=AlignItems.Center>
-            <FritzTextField Label=@Localizer[nameof(AppStrings.Url)]
-                            @bind-Value=Command.Url
+        <MudStack AlignItems="AlignItems.Center"
+                  Justify="Justify.Center"
+                  Row="true">
+            <FritzTextField @bind-Value="Command.Url"
                             For="() => Command.Url"
-                            Variant=Variant.Outlined
+                            Label="@localizer[nameof(AppStrings.Url)]"
                             ShrinkLabel
-                            UserAttributes=@(new() { { TestConst.TestId, DownloadLinkPageConst.UrlInput } }) />
+                            UserAttributes="@(new Dictionary<string, object> { { TestConst.TestId, DownloadLinkPageConst.UrlInput } })"
+                            Variant="Variant.Outlined" />
 
-            <MudSelect T=YoutubeFileType
-                       Label=@Localizer[nameof(AppStrings.FileType)]
-                       @bind-Value=Command.YoutubeFileType
+            <MudSelect @bind-Value="Command.YoutubeFileType"
                        For="() => Command.YoutubeFileType"
-                       Variant=Variant.Outlined
-                       UserAttributes=@(new() { { TestConst.TestId, DownloadLinkPageConst.YoutubeFileTypeSelect } })>
+                       Label="@localizer[nameof(AppStrings.FileType)]"
+                       T="YoutubeFileType"
+                       UserAttributes="@(new Dictionary<string, object> { { TestConst.TestId, DownloadLinkPageConst.YoutubeFileTypeSelect } })"
+                       Variant="Variant.Outlined">
                 @foreach (var youtubeFileType in Enum.GetValues(typeof(YoutubeFileType)))
                 {
                     <MudSelectItem T="YoutubeFileType"
-                                   Value=(YoutubeFileType)youtubeFileType
-                                   UserAttributes=@(new() { { TestConst.TestId, $"download-link-page-{(YoutubeFileType)youtubeFileType}" } })>
+                                   UserAttributes=@(new Dictionary<string, object> { { TestConst.TestId, $"download-link-page-{(YoutubeFileType)youtubeFileType}" } })
+                                   Value=(YoutubeFileType)youtubeFileType>
                         @youtubeFileType.ToString()
                     </MudSelectItem>
                 }
             </MudSelect>
 
-            <FritzProcessingButton @ref=_processingButton
-                                   ButtonType=ButtonType.Submit
-                                   Color=Color.Primary
-                                   ProcessingButtonText=@Localizer[nameof(AppStrings.Downloading)]
-                                   ButtonText=@Localizer[nameof(AppStrings.Download)]
-                                   UserAttributes=@(new() { { TestConst.TestId, DownloadLinkPageConst.DownloadButton} }) />
+            <FritzProcessingButton ButtonText="@localizer[nameof(AppStrings.Download)]"
+                                   ButtonType="ButtonType.Submit"
+                                   Color="Color.Primary"
+                                   ProcessingButtonText="@localizer[nameof(AppStrings.Downloading)]"
+                                   @ref="_processingButton"
+                                   UserAttributes="@(new Dictionary<string, object> { { TestConst.TestId, DownloadLinkPageConst.DownloadButton } })" />
         </MudStack>
         <FritzValidationMessage For="() => Command.Url" />
         <FritzValidationMessage For="() => Command.YoutubeFileType" />
     </EditForm>
 </MudPaper>
 
-
 @if (_downloadLinkResults is not null && _downloadLinkResults.Count > 0)
 {
     <MudItem xs=12>
-        <MudPaper Class="pa-4 mt-4"
+        <MudPaper Class="mt-4 pa-4"
                   Elevation=3>
             <MudText Typo=Typo.subtitle2>
-                @Localizer[nameof(AppStrings.DownloadedLinksCountResults), _downloadLinkResults.Count]
+                @localizer[nameof(AppStrings.DownloadedLinksCountResults), _downloadLinkResults.Count]
             </MudText>
             @foreach (var result in _downloadLinkResults)
             {
                 @if (result.Success)
                 {
-                    <a href="@result.Url" target="_blank">
+                    <a href="@result.Url"
+                       target="_blank">
                         <MudText Color=@Color.Success>
-                            [@Localizer[nameof(AppStrings.Success)]] - @result.Url
+                            [@localizer[nameof(AppStrings.Success)]] - @result.Url
                         </MudText>
                     </a>
                 }
                 else
                 {
-                    <a href="@result.Url" target="_blank">
+                    <a href="@result.Url"
+                       target="_blank">
                         <MudText Color=@Color.Error>
-                            [@Localizer[nameof(AppStrings.Fail)]] - @result.Url
+                            [@localizer[nameof(AppStrings.Fail)]] - @result.Url
                         </MudText>
                     </a>
                 }

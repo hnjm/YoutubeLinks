@@ -6,14 +6,13 @@ using YoutubeLinks.Shared.Exceptions;
 using YoutubeLinks.Shared.Features.Playlists.Commands;
 using YoutubeLinks.Shared.Features.Playlists.Helpers;
 
-namespace YoutubeLinks.Api.Features.Playlists.Commands.ExportPlaylistFeature
-{
+namespace YoutubeLinks.Api.Features.Playlists.Commands.ExportPlaylistFeature;
 
-    public static class ExportPlaylistFeature
+public static class ExportPlaylistFeature
+{
+    public static void Endpoint(this IEndpointRouteBuilder app)
     {
-        public static IEndpointRouteBuilder Endpoint(this IEndpointRouteBuilder app)
-        {
-            app.MapPost("/api/playlists/export", async (
+        app.MapPost("/api/playlists/export", async (
                 ExportPlaylist.Command command,
                 IMediator mediator,
                 CancellationToken cancellationToken) =>
@@ -21,42 +20,33 @@ namespace YoutubeLinks.Api.Features.Playlists.Commands.ExportPlaylistFeature
                 var playlistFile = await mediator.Send(command, cancellationToken);
                 return Results.File(playlistFile.FileBytes, playlistFile.ContentType, playlistFile.FileName);
             })
-                .WithTags(Tags.Playlists)
-                .AllowAnonymous();
+            .WithTags(Tags.Playlists)
+            .AllowAnonymous();
+    }
 
-            return app;
-        }
-
-        public class Handler : IRequestHandler<ExportPlaylist.Command, PlaylistFile>
+    public class Handler(
+        IPlaylistRepository playlistRepository,
+        IAuthService authService)
+        : IRequestHandler<ExportPlaylist.Command, PlaylistFile>
+    {
+        public async Task<PlaylistFile> Handle(
+            ExportPlaylist.Command command,
+            CancellationToken cancellationToken)
         {
-            private readonly IPlaylistRepository _playlistRepository;
-            private readonly IAuthService _authService;
+            var playlist = await playlistRepository.Get(command.Id) ?? throw new MyNotFoundException();
 
-            public Handler(
-                IPlaylistRepository playlistRepository,
-                IAuthService authService)
+            var isUserPlaylist = authService.IsLoggedInUser(playlist.UserId);
+            if (!playlist.Public
+                && !isUserPlaylist)
             {
-                _playlistRepository = playlistRepository;
-                _authService = authService;
+                throw new MyForbiddenException();
             }
 
-            public async Task<PlaylistFile> Handle(
-                ExportPlaylist.Command command,
-                CancellationToken cancellationToken)
-            {
-                var playlist = await _playlistRepository.Get(command.Id) ?? throw new MyNotFoundException();
+            var exporter = PlaylistExporterHelpers.GetExporter(command.PlaylistFileType);
 
-                var isUserPlaylist = _authService.IsLoggedInUser(playlist.UserId);
-                if (!playlist.Public
-                    && !isUserPlaylist)
-                    throw new MyForbiddenException();
+            var playlistFile = exporter.Export(playlist);
 
-                var exporter = PlaylistExporterHelpers.GetExporter(command.PlaylistFileType);
-
-                var playlistFile = exporter.Export(playlist);
-
-                return playlistFile;
-            }
+            return playlistFile;
         }
     }
 }

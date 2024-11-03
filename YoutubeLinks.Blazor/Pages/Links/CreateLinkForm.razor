@@ -1,24 +1,24 @@
-﻿<EditForm Model=Command
-          OnValidSubmit=HandleValidSubmit>
-    <CustomValidator @ref=_customValidator />
+﻿<EditForm Model="Command"
+          OnValidSubmit="HandleValidSubmit">
+    <CustomValidator @ref="_customValidator" />
     <FluentValidationValidator />
 
-    <MudStack Row=true
-              Justify=Justify.Center
-              AlignItems=AlignItems.Center>
-        <FritzTextField Label=@Localizer[nameof(AppStrings.Url)]
-                        @bind-Value=Command.Url
+    <MudStack AlignItems="AlignItems.Center"
+              Justify="Justify.Center"
+              Row="true">
+        <FritzTextField @bind-Value="Command.Url"
                         For="() => Command.Url"
-                        Variant=Variant.Outlined
+                        Label="@localizer[nameof(AppStrings.Url)]"
                         ShrinkLabel
-                        UserAttributes=@(new() { { TestConst.TestId, CreateLinkFormConst.UrlInput} }) />
+                        UserAttributes="@(new Dictionary<string, object> { { TestConst.TestId, CreateLinkFormConst.UrlInput } })"
+                        Variant="Variant.Outlined" />
 
-        <FritzProcessingButton @ref=_processingButton
-                               ButtonType=ButtonType.Submit
-                               Color=Color.Primary
-                               ProcessingButtonText=@Localizer[nameof(AppStrings.Creating)]
-                               ButtonText=@Localizer[nameof(AppStrings.Create)]
-                               UserAttributes=@(new() { { TestConst.TestId, CreateLinkFormConst.CreateButton} }) />
+        <FritzProcessingButton ButtonText="@localizer[nameof(AppStrings.Create)]"
+                               ButtonType="ButtonType.Submit"
+                               Color="Color.Primary"
+                               ProcessingButtonText="@localizer[nameof(AppStrings.Creating)]"
+                               @ref="_processingButton"
+                               UserAttributes="@(new Dictionary<string, object> { { TestConst.TestId, CreateLinkFormConst.CreateButton } })" />
     </MudStack>
     <FritzValidationMessage For="() => Command.Url" />
 </EditForm>

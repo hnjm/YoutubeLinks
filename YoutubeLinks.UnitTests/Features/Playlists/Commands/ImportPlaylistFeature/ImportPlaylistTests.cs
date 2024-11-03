@@ -5,242 +5,236 @@ using YoutubeLinks.Shared.Features.Playlists.Commands;
 using YoutubeLinks.Shared.Localization;
 using YoutubeLinks.UnitTests.Localization;
 
-namespace YoutubeLinks.UnitTests.Features.Playlists.Commands.ImportPlaylistFeature
+namespace YoutubeLinks.UnitTests.Features.Playlists.Commands.ImportPlaylistFeature;
+
+public class ImportPlaylistTests
 {
-    public class ImportPlaylistTests
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("    ")]
+    [InlineData("   ")]
+    public void ImportPlaylistCommandValidator_Name_ShouldNotBeEmpty(string name)
     {
-        [Theory]
-        [InlineData(null)]
-        [InlineData("")]
-        [InlineData(" ")]
-        [InlineData("    ")]
-        [InlineData("   ")]
-        public void ImportPlaylistCommandValidator_Name_ShouldNotBeEmpty(string name)
+        const string message = "Name should not be empty.";
+
+        var localizer = new TestStringLocalizer<ValidationMessage>();
+        localizer.AddTranslation(nameof(ValidationMessageString.NameNotEmpty), message);
+
+        var validator = new ImportPlaylist.Validator(localizer);
+
+        var command = new ImportPlaylist.Command
         {
-            var message = "Name should not be empty.";
+            Name = name
+        };
 
-            var localizer = new TestStringLocalizer<ValidationMessage>();
-            localizer.AddTranslation(nameof(ValidationMessageString.NameNotEmpty), message);
+        var result = validator.TestValidate(command);
 
-            var validator = new ImportPlaylist.Validator(localizer);
+        result.ShouldHaveValidationErrorFor(x => x.Name)
+            .WithErrorMessage(message);
+    }
 
-            var command = new ImportPlaylist.Command
-            {
-                Name = name,
-            };
+    [Theory]
+    [InlineData("012345678901234567890123456789012345678901234567890")]
+    [InlineData("0123456789012345678901234567890123456789012345678901")]
+    public void ImportPlaylistCommandValidator_Name_ShouldBeShorterThanMaximumStringLength(string name)
+    {
+        var message =
+            $"The length of name must be {ValidationConsts.MaximumStringLength} characters or fewer. You entered {name.Length} characters.";
 
-            var result = validator.TestValidate(command);
+        var localizer = new TestStringLocalizer<ValidationMessage>();
+        localizer.AddTranslation(nameof(ValidationMessageString.NameMaximumLength), message);
 
-            result.ShouldHaveValidationErrorFor(x => x.Name)
-                  .WithErrorMessage(message);
-        }
+        var validator = new ImportPlaylist.Validator(localizer);
 
-        [Theory]
-        [InlineData("012345678901234567890123456789012345678901234567890")]
-        [InlineData("0123456789012345678901234567890123456789012345678901")]
-        public void ImportPlaylistCommandValidator_Name_ShouldBeShorterThanMaximumStringLength(string name)
+        var command = new ImportPlaylist.Command
         {
-            var message = string.Format("The length of name must be {0} characters or fewer. You entered {1} characters.",
-                ValidationConsts.MaximumStringLength, name.Length);
+            Name = name
+        };
 
-            var localizer = new TestStringLocalizer<ValidationMessage>();
-            localizer.AddTranslation(nameof(ValidationMessageString.NameMaximumLength), message);
+        var result = validator.TestValidate(command);
 
-            var validator = new ImportPlaylist.Validator(localizer);
+        result.ShouldHaveValidationErrorFor(x => x.Name)
+            .WithErrorMessage(message);
+    }
 
-            var command = new ImportPlaylist.Command
-            {
-                Name = name,
-            };
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("    ")]
+    [InlineData("   ")]
+    public void ImportPlaylistFormModelValidator_Name_ShouldNotBeEmpty(string name)
+    {
+        const string message = "Name should not be empty.";
 
-            var result = validator.TestValidate(command);
+        var localizer = new TestStringLocalizer<ValidationMessage>();
+        localizer.AddTranslation(nameof(ValidationMessageString.NameNotEmpty), message);
 
-            result.ShouldHaveValidationErrorFor(x => x.Name)
-                  .WithErrorMessage(message);
-        }
+        var validator = new ImportPlaylist.FormModelValidator(localizer);
 
-        [Theory]
-        [InlineData(null)]
-        [InlineData("")]
-        [InlineData(" ")]
-        [InlineData("    ")]
-        [InlineData("   ")]
-        public void ImportPlaylistFormModelValidator_Name_ShouldNotBeEmpty(string name)
+        var command = new ImportPlaylist.FormModel
         {
-            var message = "Name should not be empty.";
+            Name = name
+        };
 
-            var localizer = new TestStringLocalizer<ValidationMessage>();
-            localizer.AddTranslation(nameof(ValidationMessageString.NameNotEmpty), message);
+        var result = validator.TestValidate(command);
 
-            var validator = new ImportPlaylist.FormModelValidator(localizer);
+        result.ShouldHaveValidationErrorFor(x => x.Name)
+            .WithErrorMessage(message);
+    }
 
-            var command = new ImportPlaylist.FormModel
-            {
-                Name = name,
-            };
+    [Theory]
+    [InlineData("012345678901234567890123456789012345678901234567890")]
+    [InlineData("0123456789012345678901234567890123456789012345678901")]
+    public void ImportPlaylistFormModelValidator_Name_ShouldBeShorterThanMaximumStringLength(string name)
+    {
+        var message =
+            $"The length of name must be {ValidationConsts.MaximumStringLength} characters or fewer. You entered {name.Length} characters.";
 
-            var result = validator.TestValidate(command);
+        var localizer = new TestStringLocalizer<ValidationMessage>();
+        localizer.AddTranslation(nameof(ValidationMessageString.NameMaximumLength), message);
 
-            result.ShouldHaveValidationErrorFor(x => x.Name)
-                  .WithErrorMessage(message);
-        }
+        var validator = new ImportPlaylist.FormModelValidator(localizer);
 
-        [Theory]
-        [InlineData("012345678901234567890123456789012345678901234567890")]
-        [InlineData("0123456789012345678901234567890123456789012345678901")]
-        public void ImportPlaylistFormModelValidator_Name_ShouldBeShorterThanMaximumStringLength(string name)
+        var command = new ImportPlaylist.FormModel
         {
-            var message = string.Format("The length of name must be {0} characters or fewer. You entered {1} characters.",
-                ValidationConsts.MaximumStringLength, name.Length);
+            Name = name
+        };
 
-            var localizer = new TestStringLocalizer<ValidationMessage>();
-            localizer.AddTranslation(nameof(ValidationMessageString.NameMaximumLength), message);
+        var result = validator.TestValidate(command);
 
-            var validator = new ImportPlaylist.FormModelValidator(localizer);
+        result.ShouldHaveValidationErrorFor(x => x.Name)
+            .WithErrorMessage(message);
+    }
 
-            var command = new ImportPlaylist.FormModel
-            {
-                Name = name,
-            };
+    [Fact]
+    public void ImportPlaylistFormModelValidator_File_ShouldNotBeEmpty()
+    {
+        const string message = "Select file.";
 
-            var result = validator.TestValidate(command);
+        var localizer = new TestStringLocalizer<ValidationMessage>();
+        localizer.AddTranslation(nameof(ValidationMessageString.FileNotEmpty), message);
 
-            result.ShouldHaveValidationErrorFor(x => x.Name)
-                  .WithErrorMessage(message);
-        }
+        var validator = new ImportPlaylist.FormModelValidator(localizer);
 
-        [Fact]
-        public void ImportPlaylistFormModelValidator_File_ShouldNotBeEmpty()
+        var command = new ImportPlaylist.FormModel
         {
-            var message = "Select file.";
+            Name = "Test Playlist",
+            File = null
+        };
 
-            var localizer = new TestStringLocalizer<ValidationMessage>();
-            localizer.AddTranslation(nameof(ValidationMessageString.FileNotEmpty), message);
+        var result = validator.TestValidate(command);
 
-            var validator = new ImportPlaylist.FormModelValidator(localizer);
+        result.ShouldHaveValidationErrorFor(x => x.File)
+            .WithErrorMessage(message);
+    }
 
-            var command = new ImportPlaylist.FormModel
-            {
-                Name = "Test Playlist",
-                File = null,
-            };
+    [Fact]
+    public void ImportPlaylistFormModelValidator_FileSize_ShouldBeLessThanMaxFileSize()
+    {
+        const int maxFileSize = 5242880;
+        var mockedFile = new MockBrowserFile("Test.json", maxFileSize + 1, "application/json");
+        var message =
+            $"The file size must be less than or equal to {maxFileSize} bytes. The added file have {mockedFile.Size} bytes.";
 
-            var result = validator.TestValidate(command);
+        var localizer = new TestStringLocalizer<ValidationMessage>();
+        localizer.AddTranslation(nameof(ValidationMessageString.FileMaxFileSize), message);
 
-            result.ShouldHaveValidationErrorFor(x => x.File)
-                  .WithErrorMessage(message);
-        }
+        var validator = new ImportPlaylist.FormModelValidator(localizer);
 
-        [Fact]
-        public void ImportPlaylistFormModelValidator_FileSize_ShouldBeLessThanMaxFileSize()
+        var command = new ImportPlaylist.FormModel
         {
-            var maxFileSize = 5242880;
-            var mockedFile = new MockBrowserFile("Test.json", maxFileSize + 1, "application/json");
-            var message = string.Format("The file size must be less than or equal to {0} bytes. The added file have {1} bytes.", maxFileSize, mockedFile.Size);
+            Name = "Test Playlist",
+            File = mockedFile
+        };
 
-            var localizer = new TestStringLocalizer<ValidationMessage>();
-            localizer.AddTranslation(nameof(ValidationMessageString.FileMaxFileSize), message);
+        var result = validator.TestValidate(command);
 
-            var validator = new ImportPlaylist.FormModelValidator(localizer);
+        result.ShouldHaveValidationErrorFor(x => x.File.Size)
+            .WithErrorMessage(message);
+    }
 
-            var command = new ImportPlaylist.FormModel
-            {
-                Name = "Test Playlist",
-                File = mockedFile,
-            };
+    [Theory]
+    [InlineData("png", "image/png")]
+    [InlineData("pdf", "application/pdf")]
+    [InlineData("wav", "audio/wav")]
+    [InlineData("xml", "application/xml")]
+    public void ImportPlaylistFormModelValidator_FileContentType_ShouldBeJsonOrTxt(string extension, string type)
+    {
+        const int maxFileSize = 5242880;
+        var mockedFile = new MockBrowserFile($"Test.{extension}", maxFileSize, type);
+        const string message = "The file should be in .json or .txt format.";
 
-            var result = validator.TestValidate(command);
+        var localizer = new TestStringLocalizer<ValidationMessage>();
+        localizer.AddTranslation(nameof(ValidationMessageString.FileContentTypeShouldBeJsonOrTxt), message);
 
-            result.ShouldHaveValidationErrorFor(x => x.File.Size)
-                  .WithErrorMessage(message);
-        }
+        var validator = new ImportPlaylist.FormModelValidator(localizer);
 
-        [Theory]
-        [InlineData("png", "image/png")]
-        [InlineData("pdf", "application/pdf")]
-        [InlineData("wav", "audio/wav")]
-        [InlineData("xml", "application/xml")]
-        public void ImportPlaylistFormModelValidator_FileContentType_ShouldBeJsonOrTxt(string extension, string type)
+        var command = new ImportPlaylist.FormModel
         {
-            var maxFileSize = 5242880;
-            var mockedFile = new MockBrowserFile($"Test.{extension}", maxFileSize, type);
-            var message = "The file should be in .json or .txt format.";
+            Name = "Test Playlist",
+            File = mockedFile
+        };
 
-            var localizer = new TestStringLocalizer<ValidationMessage>();
-            localizer.AddTranslation(nameof(ValidationMessageString.FileContentTypeShouldBeJsonOrTxt), message);
+        var result = validator.TestValidate(command);
 
-            var validator = new ImportPlaylist.FormModelValidator(localizer);
+        result.ShouldHaveValidationErrorFor(x => x.File.ContentType)
+            .WithErrorMessage(message);
+    }
 
-            var command = new ImportPlaylist.FormModel
-            {
-                Name = "Test Playlist",
-                File = mockedFile,
-            };
+    [Fact]
+    public void ImportPlaylistFileValidator_Size_ShouldBeLessThanMaxFileSize()
+    {
+        const int maxFileSize = 5242880;
+        var mockedFile = new MockBrowserFile("Test.json", maxFileSize + 1, "application/json");
+        var message =
+            $"The file size must be less than or equal to {maxFileSize} bytes. The added file have {mockedFile.Size} bytes.";
 
-            var result = validator.TestValidate(command);
+        var localizer = new TestStringLocalizer<ValidationMessage>();
+        localizer.AddTranslation(nameof(ValidationMessageString.FileMaxFileSize), message);
 
-            result.ShouldHaveValidationErrorFor(x => x.File.ContentType)
-                  .WithErrorMessage(message);
-        }
+        var validator = new ImportPlaylist.FileValidator(localizer);
 
-        [Fact]
-        public void ImportPlaylistFileValidator_Size_ShouldBeLessThanMaxFileSize()
+        var result = validator.TestValidate(mockedFile);
+
+        result.ShouldHaveValidationErrorFor(x => x.Size)
+            .WithErrorMessage(message);
+    }
+
+    [Theory]
+    [InlineData("png", "image/png")]
+    [InlineData("pdf", "application/pdf")]
+    [InlineData("wav", "audio/wav")]
+    [InlineData("xml", "application/xml")]
+    public void ImportPlaylistFileValidator_ContentType_ShouldBeJsonOrTxt(string extension, string type)
+    {
+        const int maxFileSize = 5242880;
+        var mockedFile = new MockBrowserFile($"Test.{extension}", maxFileSize, type);
+        const string message = "The file should be in .json or .txt format.";
+
+        var localizer = new TestStringLocalizer<ValidationMessage>();
+        localizer.AddTranslation(nameof(ValidationMessageString.FileContentTypeShouldBeJsonOrTxt), message);
+
+        var validator = new ImportPlaylist.FileValidator(localizer);
+
+        var result = validator.TestValidate(mockedFile);
+
+        result.ShouldHaveValidationErrorFor(x => x.ContentType)
+            .WithErrorMessage(message);
+    }
+
+    private class MockBrowserFile(string name, long size, string contentType) : IBrowserFile
+    {
+        public string Name { get; } = name;
+        public long Size { get; } = size;
+        public string ContentType { get; } = contentType;
+        public DateTimeOffset LastModified { get; }
+
+        public Stream OpenReadStream(long maxAllowedSize = 512000, CancellationToken cancellationToken = default)
         {
-            var maxFileSize = 5242880;
-            var mockedFile = new MockBrowserFile("Test.json", maxFileSize + 1, "application/json");
-            var message = string.Format("The file size must be less than or equal to {0} bytes. The added file have {1} bytes.", maxFileSize, mockedFile.Size);
-
-            var localizer = new TestStringLocalizer<ValidationMessage>();
-            localizer.AddTranslation(nameof(ValidationMessageString.FileMaxFileSize), message);
-
-            var validator = new ImportPlaylist.FileValidator(localizer);
-
-            var result = validator.TestValidate(mockedFile);
-
-            result.ShouldHaveValidationErrorFor(x => x.Size)
-                  .WithErrorMessage(message);
-        }
-
-        [Theory]
-        [InlineData("png", "image/png")]
-        [InlineData("pdf", "application/pdf")]
-        [InlineData("wav", "audio/wav")]
-        [InlineData("xml", "application/xml")]
-        public void ImportPlaylistFileValidator_ContentType_ShouldBeJsonOrTxt(string extension, string type)
-        {
-            var maxFileSize = 5242880;
-            var mockedFile = new MockBrowserFile($"Test.{extension}", maxFileSize, type);
-            var message = "The file should be in .json or .txt format.";
-
-            var localizer = new TestStringLocalizer<ValidationMessage>();
-            localizer.AddTranslation(nameof(ValidationMessageString.FileContentTypeShouldBeJsonOrTxt), message);
-
-            var validator = new ImportPlaylist.FileValidator(localizer);
-
-            var result = validator.TestValidate(mockedFile);
-
-            result.ShouldHaveValidationErrorFor(x => x.ContentType)
-                  .WithErrorMessage(message);
-        }
-
-        public class MockBrowserFile : IBrowserFile
-        {
-            public string Name { get; }
-            public long Size { get; }
-            public string ContentType { get; }
-            public DateTimeOffset LastModified { get; }
-
-            public MockBrowserFile(string name, long size, string contentType)
-            {
-                Name = name;
-                Size = size;
-                ContentType = contentType;
-            }
-
-            public Stream OpenReadStream(long maxAllowedSize = 512000, CancellationToken cancellationToken = default)
-            {
-                return new MemoryStream();
-            }
+            return new MemoryStream();
         }
     }
 }

@@ -1,8 +1,7 @@
-﻿namespace YoutubeLinks.Shared.Features.Links.Helpers
+﻿namespace YoutubeLinks.Shared.Features.Links.Helpers;
+
+public enum YoutubeFileType
 {
-    public enum YoutubeFileType
-    {
-        MP3,
-        MP4,
-    }
+    Mp3,
+    Mp4
 }

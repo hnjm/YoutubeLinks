@@ -7,112 +7,113 @@ using YoutubeLinks.Shared.Features.Links.Queries;
 using YoutubeLinks.Shared.Features.Links.Responses;
 using static YoutubeLinks.Shared.Features.Links.Queries.GetAllLinks;
 
-namespace YoutubeLinks.Api.Features.Links.Extensions
+namespace YoutubeLinks.Api.Features.Links.Extensions;
+
+public static class LinkExtensions
 {
-    public static class LinkExtensions
+    public static IEndpointRouteBuilder AddLinksEndpoints(this IEndpointRouteBuilder app)
     {
-        public static IEndpointRouteBuilder AddLinksEndpoints(this IEndpointRouteBuilder app)
-        {
-            CreateLinkFeature.Endpoint(app);
-            DeleteLinkFeature.Endpoint(app);
-            DownloadLinkFeature.Endpoint(app);
-            DownloadSingleLinkFeature.Endpoint(app);
-            SetLinkDownloadedFlagFeature.Endpoint(app);
-            UpdateLinkFeature.Endpoint(app);
-            GetAllLinksFeature.Endpoint(app);
-            GetAllPaginatedLinksFeature.Endpoint(app);
-            GetLinkFeature.Endpoint(app);
+        CreateLinkFeature.Endpoint(app);
+        DeleteLinkFeature.Endpoint(app);
+        DownloadLinkFeature.Endpoint(app);
+        DownloadSingleLinkFeature.Endpoint(app);
+        SetLinkDownloadedFlagFeature.Endpoint(app);
+        UpdateLinkFeature.Endpoint(app);
+        GetAllLinksFeature.Endpoint(app);
+        GetAllPaginatedLinksFeature.Endpoint(app);
+        GetLinkFeature.Endpoint(app);
 
-            return app;
+        return app;
+    }
+
+    public static LinkDto ToDto(this Link link)
+    {
+        return new LinkDto
+        {
+            Id = link.Id,
+            Created = link.Created,
+            Modified = link.Modified,
+            Url = link.Url,
+            VideoId = link.VideoId,
+            Title = link.Title,
+            Downloaded = link.Downloaded,
+            PlaylistId = link.PlaylistId
+        };
+    }
+
+    private static LinkInfoDto ToLinkInfoDto(this Link link)
+    {
+        return new LinkInfoDto
+        {
+            Id = link.Id,
+            Url = link.Url,
+            VideoId = link.VideoId,
+            Title = link.Title
+        };
+    }
+
+    /* GetAllPaginatedLinks.Query */
+
+    public static IQueryable<Link> FilterLinks(
+        this IQueryable<Link> links,
+        GetAllPaginatedLinks.Query query)
+    {
+        var searchTerm = query.SearchTerm?.ToLower()?.Trim();
+
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            links = links.Where(x =>
+                x.Title.ToLower().Contains(searchTerm.ToLower()));
         }
 
-        public static LinkDto ToDto(this Link link)
+        return links;
+    }
+
+    public static IQueryable<Link> SortLinks(
+        this IQueryable<Link> links,
+        GetAllPaginatedLinks.Query query)
+    {
+        return query.SortOrder switch
         {
-            return new()
-            {
-                Id = link.Id,
-                Created = link.Created,
-                Modified = link.Modified,
-                Url = link.Url,
-                VideoId = link.VideoId,
-                Title = link.Title,
-                Downloaded = link.Downloaded,
-                PlaylistId = link.PlaylistId,
-            };
-        }
+            SortOrder.Ascending => links.OrderBy(GetLinkSortProperty(query)),
+            SortOrder.Descending => links.OrderByDescending(GetLinkSortProperty(query)),
+            SortOrder.None => links.OrderBy(x => x.Title),
+            _ => links.OrderBy(x => x.Title)
+        };
+    }
 
-        public static LinkInfoDto ToLinkInfoDto(this Link link)
+    private static Expression<Func<Link, object>> GetLinkSortProperty(GetAllPaginatedLinks.Query query)
+    {
+        return query.SortColumn.ToLowerInvariant() switch
         {
-            return new()
-            {
-                Id = link.Id,
-                Url = link.Url,
-                VideoId = link.VideoId,
-                Title = link.Title,
-            };
-        }
+            "title" => link => link.Title,
+            "modified" => link => link.Modified,
+            _ => link => link.Title
+        };
+    }
 
-        /* GetAllPaginatedLinks.Query */
+    /* GetAllLinks.Query */
 
-        public static IQueryable<Link> FilterLinks(
-            this IQueryable<Link> links,
-            GetAllPaginatedLinks.Query query)
-        {
-            var searchTerm = query.SearchTerm?.ToLower()?.Trim();
+    public static IQueryable<Link> FilterDownloaded(
+        this IQueryable<Link> links,
+        Query query)
+    {
+        links = links.Where(x => x.Downloaded == query.Downloaded);
+        return links;
+    }
 
-            if (!string.IsNullOrWhiteSpace(searchTerm))
-                links = links.Where(x =>
-                    x.Title.ToLower().Contains(searchTerm));
+    public static IQueryable<Link> SortLinks(
+        this IQueryable<Link> links)
+    {
+        links = links.OrderBy(link => link.Title);
+        return links;
+    }
 
-            return links;
-        }
-
-        public static IQueryable<Link> SortLinks(
-            this IQueryable<Link> links,
-            GetAllPaginatedLinks.Query query)
-        {
-            return query.SortOrder switch
-            {
-                SortOrder.Ascending => links.OrderBy(GetLinkSortProperty(query)),
-                SortOrder.Descending => links.OrderByDescending(GetLinkSortProperty(query)),
-                SortOrder.None => links.OrderBy(x => x.Title),
-                _ => links.OrderBy(x => x.Title),
-            };
-        }
-
-        private static Expression<Func<Link, object>> GetLinkSortProperty(GetAllPaginatedLinks.Query query)
-        {
-            return query.SortColumn.ToLowerInvariant() switch
-            {
-                "title" => link => link.Title,
-                "modified" => link => link.Modified,
-                _ => link => link.Title,
-            };
-        }
-
-        /* GetAllLinks.Query */
-
-        public static IQueryable<Link> FilterDownloaded(
-            this IQueryable<Link> links,
-            Query query)
-        {
-            links = links.Where(x => x.Downloaded == query.Downloaded);
-            return links;
-        }
-
-        public static IQueryable<Link> SortLinks(
-            this IQueryable<Link> links)
-        {
-            links = links.OrderBy(link => link.Title);
-            return links;
-        }
-
-        public static List<LinkInfoDto> ToLinkInfoDtos(
-            this IQueryable<Link> links)
-        {
-            var dtos = links.Select(x => x.ToLinkInfoDto())
-                            .ToList();
-            return dtos;
-        }
+    public static List<LinkInfoDto> ToLinkInfoDtos(
+        this IQueryable<Link> links)
+    {
+        var dtos = links.Select(x => x.ToLinkInfoDto())
+            .ToList();
+        return dtos;
     }
 }

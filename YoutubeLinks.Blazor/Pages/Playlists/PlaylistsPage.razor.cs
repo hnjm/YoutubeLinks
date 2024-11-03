@@ -13,202 +13,212 @@ using YoutubeLinks.Shared.Features.Playlists.Helpers;
 using YoutubeLinks.Shared.Features.Playlists.Queries;
 using YoutubeLinks.Shared.Features.Playlists.Responses;
 
-namespace YoutubeLinks.Blazor.Pages.Playlists
+namespace YoutubeLinks.Blazor.Pages.Playlists;
+
+public partial class PlaylistsPage(
+    IExceptionHandler exceptionHandler,
+    IPlaylistApiClient playlistApiClient,
+    IAuthService authService,
+    IStringLocalizer<App> localizer,
+    IDialogService dialogService,
+    NavigationManager navigationManager,
+    IJSRuntime jsRuntime)
+    : ComponentBase
 {
-    public partial class PlaylistsPage : ComponentBase
+    private bool _isUserPlaylist;
+    private List<BreadcrumbItem> _items;
+    private PagedList<PlaylistDto> _playlistPagedList;
+    private string _searchString = "";
+    private MudTable<PlaylistDto> _table;
+
+    [Parameter] public int UserId { get; set; }
+
+    protected override async Task OnParametersSetAsync()
     {
-        private List<BreadcrumbItem> _items;
-        private MudTable<PlaylistDto> _table;
+        _items =
+        [
+            new BreadcrumbItem(localizer[nameof(AppStrings.Users)], "/users"),
+            new BreadcrumbItem(localizer[nameof(AppStrings.Playlists)], null, true)
+        ];
 
-        private bool _isUserPlaylist = false;
+        _isUserPlaylist = await authService.IsLoggedInUser(UserId);
+    }
 
-        private string _searchString = "";
-        private PagedList<PlaylistDto> _playlistPagedList;
-
-        public class PlaylistsPageConst
+    private async Task<TableData<PlaylistDto>> ServerReload(TableState state, CancellationToken token)
+    {
+        var query = new GetAllUserPlaylists.Query
         {
-            public const string CreatePlaylistButton = "playlists-page-create-playlist-button";
-            public const string UpdatePlaylistButton = "playlists-page-update-playlist-button";
-            public const string DeletePlaylistButton = "playlists-page-delete-playlist-button";
-            public const string ImportPlaylistButton = "playlists-page-import-playlist-button";
-            public const string ExportPlaylistButton = "playlists-page-export-playlist-button";
-            public const string ExportPlaylistToJsonButton = "playlists-page-export-playlist-to-json-button";
-            public const string ExportPlaylistToTxtButton = "playlists-page-export-playlist-to-txt-button";
-            public const string DownloadPlaylistButton = "playlists-page-download-playlist-button";
-            public const string NavigateToPlaylistLinksButton = "playlists-page-navigate-to-playlist-links-button";
-            public const string SearchInput = "playlists-page-search-input";
-            public const string NameTableSortLabel = "playlists-page-name-table-sort-label";
-            public const string NameTableRowData = "playlists-page-name-table-row-data";
+            Page = state.Page + 1,
+            PageSize = state.PageSize,
+            SortColumn = state.SortLabel,
+            SortOrder = (SortOrder)state.SortDirection,
+            SearchTerm = _searchString,
+            UserId = UserId
+        };
+
+        try
+        {
+            _playlistPagedList = await playlistApiClient.GetAllUserPlaylists(query);
+        }
+        catch (Exception ex)
+        {
+            exceptionHandler.HandleExceptions(ex);
+            return new TableData<PlaylistDto> { TotalItems = 0, Items = [] };
         }
 
-        [Parameter] public int UserId { get; set; }
-
-        [Inject] public IExceptionHandler ExceptionHandler { get; set; }
-        [Inject] public IPlaylistApiClient PlaylistApiClient { get; set; }
-
-        [Inject] public IAuthService AuthService { get; set; }
-        [Inject] public IStringLocalizer<App> Localizer { get; set; }
-
-        [Inject] public IDialogService DialogService { get; set; }
-        [Inject] public NavigationManager NavigationManager { get; set; }
-        [Inject] public IJSRuntime JSRuntime { get; set; }
-
-
-        protected override async Task OnParametersSetAsync()
+        return new TableData<PlaylistDto>
         {
-            _items =
-            [
-                new(Localizer[nameof(AppStrings.Users)], href: $"/users"),
-                new(Localizer[nameof(AppStrings.Playlists)], href: null, disabled: true),
-            ];
+            TotalItems = _playlistPagedList.TotalCount,
+            Items = _playlistPagedList.Items
+        };
+    }
 
-            _isUserPlaylist = await AuthService.IsLoggedInUser(UserId);
-        }
+    private async Task DeleteUserPlaylist(int id)
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, CloseButton = true };
+        var dialog = await dialogService.ShowAsync<DeleteDialog>(localizer[nameof(AppStrings.Delete)], options);
 
-        private async Task<TableData<PlaylistDto>> ServerReload(TableState state, CancellationToken token)
-        {
-            var query = new GetAllUserPlaylists.Query
-            {
-                Page = state.Page + 1,
-                PageSize = state.PageSize,
-                SortColumn = state.SortLabel,
-                SortOrder = ((SortOrder)state.SortDirection),
-                SearchTerm = _searchString,
-                UserId = UserId,
-            };
-
-            try
-            {
-                _playlistPagedList = await PlaylistApiClient.GetAllUserPlaylists(query);
-            }
-            catch (Exception ex)
-            {
-                ExceptionHandler.HandleExceptions(ex);
-                return new() { TotalItems = 0, Items = [] };
-            }
-
-            return new()
-            {
-                TotalItems = _playlistPagedList.TotalCount,
-                Items = _playlistPagedList.Items
-            };
-        }
-
-        private async Task DeleteUserPlaylist(int id)
-        {
-            var options = new DialogOptions() { CloseOnEscapeKey = true, CloseButton = true };
-            var dialog = await DialogService.ShowAsync<DeleteDialog>(Localizer[nameof(AppStrings.Delete)], options);
-
-            var result = await dialog.Result;
-            if (!result.Canceled)
-            {
-                try
-                {
-                    await PlaylistApiClient.DeletePlaylist(id);
-                    await _table.ReloadServerData();
-                }
-                catch (Exception ex)
-                {
-                    ExceptionHandler.HandleExceptions(ex);
-                }
-            }
-        }
-
-        private async Task UpdateUserPlaylist(PlaylistDto playlistDto)
-        {
-            var options = new DialogOptions() { CloseOnEscapeKey = true, CloseButton = true };
-            var parameters = new DialogParameters<UpdatePlaylistDialog>
-            {
-                {
-                    x => x.Command,
-                    new()
-                    {
-                        Id = playlistDto.Id,
-                        Name = playlistDto.Name,
-                        Public = playlistDto.Public,
-                    }
-                }
-            };
-
-            var dialog = await DialogService.ShowAsync<UpdatePlaylistDialog>(Localizer[nameof(AppStrings.UpdatePlaylist)], parameters, options);
-            var result = await dialog.Result;
-            if (!result.Canceled)
-                await _table.ReloadServerData();
-        }
-
-        private async Task CreateUserPlaylist()
-        {
-            var options = new DialogOptions() { CloseOnEscapeKey = true, CloseButton = true };
-            var parameters = new DialogParameters<CreatePlaylistDialog>
-            {
-                {
-                    x => x.Command,
-                    new()
-                    {
-                        Name = "",
-                        Public = true,
-                    }
-                }
-            };
-
-            var dialog = await DialogService.ShowAsync<CreatePlaylistDialog>(Localizer[nameof(AppStrings.CreatePlaylist)], parameters, options);
-            var result = await dialog.Result;
-            if (!result.Canceled)
-                await _table.ReloadServerData();
-        }
-
-        private async Task ExportPlaylistToFile(int id, PlaylistFileType playlistFileType)
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
         {
             try
             {
-                var command = new ExportPlaylist.Command
-                {
-                    Id = id,
-                    PlaylistFileType = playlistFileType,
-                };
-                string fileExtension = PlaylistHelpers.PlaylistFileTypeToString(playlistFileType);
-
-                var response = await PlaylistApiClient.ExportPlaylist(command);
-
-                var content = await response.Content.ReadAsStreamAsync();
-                var streamRef = new DotNetStreamReference(content);
-                var filename = response.Content.Headers.ContentDisposition.FileNameStar ?? $"default_name.{fileExtension}";
-
-                await JSRuntime.InvokeVoidAsync("downloadFile", filename, streamRef);
+                await playlistApiClient.DeletePlaylist(id);
+                await _table.ReloadServerData();
             }
             catch (Exception ex)
             {
-                ExceptionHandler.HandleExceptions(ex);
+                exceptionHandler.HandleExceptions(ex);
             }
         }
+    }
 
-        private async Task ImportPlaylistFromJSON()
+    private async Task UpdateUserPlaylist(PlaylistDto playlistDto)
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, CloseButton = true };
+        var parameters = new DialogParameters<UpdatePlaylistDialog>
         {
-            var options = new DialogOptions() { CloseOnEscapeKey = true, CloseButton = true };
-            var parameters = new DialogParameters<ImportPlaylistDialog>
             {
+                x => x.Command,
+                new UpdatePlaylist.Command
                 {
-                    x => x.FormModel,
-                    new()
-                    {
-                        Name = "",
-                        Public = true,
-                        ExportedLinks = [],
-                        File = null,
-                    }
+                    Id = playlistDto.Id,
+                    Name = playlistDto.Name,
+                    Public = playlistDto.Public
                 }
-            };
+            }
+        };
 
-            var dialog = await DialogService.ShowAsync<ImportPlaylistDialog>(Localizer[nameof(AppStrings.ImportPlaylist)], parameters, options);
-            var result = await dialog.Result;
-            if (!result.Canceled)
-                await _table.ReloadServerData();
+        var dialog =
+            await dialogService.ShowAsync<UpdatePlaylistDialog>(localizer[nameof(AppStrings.UpdatePlaylist)],
+                parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            await _table.ReloadServerData();
         }
+    }
 
-        private void RedirectToLinksPage(int id)
-            => NavigationManager.NavigateTo($"/links/{UserId}/{id}");
+    private async Task CreateUserPlaylist()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, CloseButton = true };
+        var parameters = new DialogParameters<CreatePlaylistDialog>
+        {
+            {
+                x => x.Command,
+                new CreatePlaylist.Command
+                {
+                    Name = "",
+                    Public = true
+                }
+            }
+        };
 
-        private void RedirectToDownloadPlaylistPage(int id)
-            => NavigationManager.NavigateTo($"/downloadPlaylist/{id}");
+        var dialog =
+            await dialogService.ShowAsync<CreatePlaylistDialog>(localizer[nameof(AppStrings.CreatePlaylist)],
+                parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            await _table.ReloadServerData();
+        }
+    }
+
+    private async Task ExportPlaylistToFile(int id, PlaylistFileType playlistFileType)
+    {
+        try
+        {
+            var command = new ExportPlaylist.Command
+            {
+                Id = id,
+                PlaylistFileType = playlistFileType
+            };
+            var fileExtension = PlaylistHelpers.PlaylistFileTypeToString(playlistFileType);
+
+            var response = await playlistApiClient.ExportPlaylist(command);
+
+            var content = await response.Content.ReadAsStreamAsync();
+            var streamRef = new DotNetStreamReference(content);
+            var filename = response.Content.Headers.ContentDisposition?.FileNameStar ?? $"default_name.{fileExtension}";
+
+            await jsRuntime.InvokeVoidAsync("downloadFile", filename, streamRef);
+        }
+        catch (Exception ex)
+        {
+            exceptionHandler.HandleExceptions(ex);
+        }
+    }
+
+    private async Task ImportPlaylistFromJson()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, CloseButton = true };
+        var parameters = new DialogParameters<ImportPlaylistDialog>
+        {
+            {
+                x => x.FormModel,
+                new ImportPlaylist.FormModel
+                {
+                    Name = "",
+                    Public = true,
+                    ExportedLinks = [],
+                    File = null
+                }
+            }
+        };
+
+        var dialog =
+            await dialogService.ShowAsync<ImportPlaylistDialog>(localizer[nameof(AppStrings.ImportPlaylist)],
+                parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            await _table.ReloadServerData();
+        }
+    }
+
+    private void RedirectToLinksPage(int id)
+    {
+        navigationManager.NavigateTo($"/links/{UserId}/{id}");
+    }
+
+    private void RedirectToDownloadPlaylistPage(int id)
+    {
+        navigationManager.NavigateTo($"/downloadPlaylist/{id}");
+    }
+
+    public abstract class PlaylistsPageConst
+    {
+        public const string CreatePlaylistButton = "playlists-page-create-playlist-button";
+        public const string UpdatePlaylistButton = "playlists-page-update-playlist-button";
+        public const string DeletePlaylistButton = "playlists-page-delete-playlist-button";
+        public const string ImportPlaylistButton = "playlists-page-import-playlist-button";
+        public const string ExportPlaylistButton = "playlists-page-export-playlist-button";
+        public const string ExportPlaylistToJsonButton = "playlists-page-export-playlist-to-json-button";
+        public const string ExportPlaylistToTxtButton = "playlists-page-export-playlist-to-txt-button";
+        public const string DownloadPlaylistButton = "playlists-page-download-playlist-button";
+        public const string NavigateToPlaylistLinksButton = "playlists-page-navigate-to-playlist-links-button";
+        public const string SearchInput = "playlists-page-search-input";
+        public const string NameTableSortLabel = "playlists-page-name-table-sort-label";
+        public const string NameTableRowData = "playlists-page-name-table-row-data";
     }
 }

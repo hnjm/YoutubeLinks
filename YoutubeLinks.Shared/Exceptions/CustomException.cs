@@ -1,63 +1,65 @@
-﻿namespace YoutubeLinks.Shared.Exceptions
+﻿namespace YoutubeLinks.Shared.Exceptions;
+
+public abstract class CustomException(string message) : Exception(message)
 {
-    public abstract class CustomException : Exception
+    public ExceptionType Type { get; protected init; }
+}
+
+public class MyValidationException : CustomException
+{
+    private const string ErrorMessage = "Validation Error";
+
+    public MyValidationException(Dictionary<string, List<string>> errors) : base(ErrorMessage)
     {
-        public ExceptionType Type { get; set; }
-        public CustomException(string message) : base(message) { }
+        Type = ExceptionType.Validation;
+        Errors = errors;
     }
 
-    public class MyValidationException : CustomException
+    public MyValidationException(string propertyName, string error) : base(ErrorMessage)
     {
-        private readonly static string _errorMessage = "Validation Error";
-        public Dictionary<string, List<string>> Errors { get; set; } = [];
-
-        public MyValidationException(Dictionary<string, List<string>> errors) : base(_errorMessage)
-        {
-            Type = ExceptionType.Validation;
-            Errors = errors;
-        }
-
-        public MyValidationException(string propertyName, string error) : base(_errorMessage)
-        {
-            Type = ExceptionType.Validation;
-            Errors.Add(propertyName, [error]);
-        }
+        Type = ExceptionType.Validation;
+        Errors.Add(propertyName, [error]);
     }
 
-    public class MyServerException : CustomException
+    public Dictionary<string, List<string>> Errors { get; set; } = [];
+}
+
+public class MyServerException : CustomException
+{
+    private const string ErrorMessage = "Server Error";
+
+    public MyServerException() : base(ErrorMessage)
     {
-        private readonly static string _errorMessage = "Server Error";
-        public MyServerException() : base(_errorMessage)
-        {
-            Type = ExceptionType.Server;
-        }
+        Type = ExceptionType.Server;
     }
+}
 
-    public class MyUnauthorizedException : CustomException
+public class MyUnauthorizedException : CustomException
+{
+    private const string ErrorMessage = "Unauthorized Error";
+
+    public MyUnauthorizedException() : base(ErrorMessage)
     {
-        private readonly static string _errorMessage = "Unauthorized Error";
-        public MyUnauthorizedException() : base(_errorMessage)
-        {
-            Type = ExceptionType.Unauthorized;
-        }
+        Type = ExceptionType.Unauthorized;
     }
+}
 
-    public class MyForbiddenException : CustomException
+public class MyForbiddenException : CustomException
+{
+    private const string ErrorMessage = "Forbidden Error";
+
+    public MyForbiddenException() : base(ErrorMessage)
     {
-        private readonly static string _errorMessage = "Forbidden Error";
-        public MyForbiddenException() : base(_errorMessage)
-        {
-            Type = ExceptionType.Forbidden;
-        }
+        Type = ExceptionType.Forbidden;
     }
+}
 
-    public class MyNotFoundException : CustomException
+public class MyNotFoundException : CustomException
+{
+    private const string ErrorMessage = "Not Found Error";
+
+    public MyNotFoundException() : base(ErrorMessage)
     {
-        private readonly static string _errorMessage = "Not Found Error";
-
-        public MyNotFoundException() : base(_errorMessage)
-        {
-            Type = ExceptionType.NotFound;
-        }
+        Type = ExceptionType.NotFound;
     }
 }

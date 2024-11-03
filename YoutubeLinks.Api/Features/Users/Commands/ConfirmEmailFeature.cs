@@ -2,76 +2,69 @@
 using Microsoft.Extensions.Localization;
 using YoutubeLinks.Api.Data.Repositories;
 using YoutubeLinks.Api.Emails;
+using YoutubeLinks.Api.Emails.Models;
+using YoutubeLinks.Api.Helpers;
 using YoutubeLinks.Api.Localization;
 using YoutubeLinks.Shared.Exceptions;
 using YoutubeLinks.Shared.Features.Users.Commands;
-using YoutubeLinks.Api.Helpers;
-using YoutubeLinks.Api.Emails.Models;
 
-namespace YoutubeLinks.Api.Features.Users.Commands
+namespace YoutubeLinks.Api.Features.Users.Commands;
+
+public static class ConfirmEmailFeature
 {
-    public static class ConfirmEmailFeature
+    public static void Endpoint(this IEndpointRouteBuilder app)
     {
-        public static IEndpointRouteBuilder Endpoint(this IEndpointRouteBuilder app)
-        {
-            app.MapPost("/api/users/confirmEmail", async (
+        app.MapPost("/api/users/confirmEmail", async (
                 ConfirmEmail.Command command,
                 IMediator mediator,
                 CancellationToken cancellationToken) =>
             {
                 return Results.Ok(await mediator.Send(command, cancellationToken));
             })
-                .WithTags(Tags.Users)
-                .AllowAnonymous();
+            .WithTags(Tags.Users)
+            .AllowAnonymous();
+    }
 
-            return app;
-        }
-
-        public class Handler : IRequestHandler<ConfirmEmail.Command, bool>
+    public class Handler(
+        IUserRepository userRepository,
+        IEmailService emailService,
+        IStringLocalizer<ApiValidationMessage> validationLocalizer)
+        : IRequestHandler<ConfirmEmail.Command, bool>
+    {
+        public async Task<bool> Handle(
+            ConfirmEmail.Command command,
+            CancellationToken cancellationToken)
         {
-            private readonly IUserRepository _userRepository;
-            private readonly IEmailService _emailService;
-            private readonly IStringLocalizer<ApiValidationMessage> _validationLocalizer;
+            var user = await userRepository.GetByEmail(command.Email) ??
+                       throw new MyValidationException(nameof(ConfirmEmail.Command.Email),
+                           validationLocalizer[
+                               nameof(ApiValidationMessageString.EmailUserWithGivenEmailDoesNotExist)]);
 
-            public Handler(
-                IUserRepository userRepository,
-                IEmailService emailService,
-                IStringLocalizer<ApiValidationMessage> validationLocalizer)
+            if (user.EmailConfirmed)
             {
-                _userRepository = userRepository;
-                _emailService = emailService;
-                _validationLocalizer = validationLocalizer;
+                throw new MyValidationException(nameof(ConfirmEmail.Command.Email),
+                    validationLocalizer[nameof(ApiValidationMessageString.EmailAlreadyConfirmed)]);
             }
 
-            public async Task<bool> Handle(
-                ConfirmEmail.Command command,
-                CancellationToken cancellationToken)
+            var isTokenAssignedToUser =
+                await userRepository.IsEmailConfirmationTokenAssignedToUser(user.Email, command.Token);
+            if (!isTokenAssignedToUser)
             {
-                var user = await _userRepository.GetByEmail(command.Email) ??
-                    throw new MyValidationException(nameof(ConfirmEmail.Command.Email),
-                        _validationLocalizer[nameof(ApiValidationMessageString.EmailUserWithGivenEmailDoesNotExist)]);
-
-                if (user.EmailConfirmed)
-                    throw new MyValidationException(nameof(ConfirmEmail.Command.Email),
-                        _validationLocalizer[nameof(ApiValidationMessageString.EmailAlreadyConfirmed)]);
-
-                var isTokenAssignedToUser = await _userRepository.IsEmailConfirmationTokenAssignedToUser(user.Email, command.Token);
-                if (!isTokenAssignedToUser)
-                    throw new MyValidationException(nameof(ConfirmEmail.Command.Token),
-                        _validationLocalizer[nameof(ApiValidationMessageString.TokenIsNotAssignedToThisUser)]);
-
-                user.EmailConfirmed = true;
-                user.EmailConfirmationToken = null;
-
-                await _userRepository.Update(user);
-
-                await _emailService.SendEmail(user.Email, new EmailConfirmationSuccessfulTemplateModel
-                {
-                    UserName = user.UserName,
-                });
-
-                return isTokenAssignedToUser;
+                throw new MyValidationException(nameof(ConfirmEmail.Command.Token),
+                    validationLocalizer[nameof(ApiValidationMessageString.TokenIsNotAssignedToThisUser)]);
             }
+
+            user.EmailConfirmed = true;
+            user.EmailConfirmationToken = null;
+
+            await userRepository.Update(user);
+
+            await emailService.SendEmail(user.Email, new EmailConfirmationSuccessfulTemplateModel
+            {
+                UserName = user.UserName
+            });
+
+            return true;
         }
     }
 }

@@ -1,27 +1,24 @@
 ﻿using Blazored.LocalStorage;
 
-namespace YoutubeLinks.Blazor.Services
+namespace YoutubeLinks.Blazor.Services;
+
+public interface ITableViewProvider
 {
-    public interface ITableViewProvider
+    Task<bool> GetTableView();
+    Task SetTableView(bool value);
+}
+
+public class TableViewProvider(ILocalStorageService localStorageService) : ITableViewProvider
+{
+    private const string TableView = "TableView";
+
+    public async Task<bool> GetTableView()
     {
-        Task<bool> GetTableView();
-        Task SetTableView(bool value);
+        return await localStorageService.GetItemAsync<bool?>(TableView) ?? true;
     }
 
-    public class TableViewProvider : ITableViewProvider
+    public async Task SetTableView(bool value)
     {
-        private readonly ILocalStorageService _localStorageService;
-        private readonly string _tableView = "TableView";
-
-        public TableViewProvider(ILocalStorageService localStorageService)
-        {
-            _localStorageService = localStorageService;
-        }
-
-        public async Task<bool> GetTableView()
-            => await _localStorageService.GetItemAsync<bool?>(_tableView) ?? true;
-
-        public async Task SetTableView(bool value)
-            => await _localStorageService.SetItemAsync(_tableView, value);
+        await localStorageService.SetItemAsync(TableView, value);
     }
 }

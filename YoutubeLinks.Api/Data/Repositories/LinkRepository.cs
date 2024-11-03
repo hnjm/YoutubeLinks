@@ -2,69 +2,71 @@
 using YoutubeLinks.Api.Data.Database;
 using YoutubeLinks.Api.Data.Entities;
 
-namespace YoutubeLinks.Api.Data.Repositories
+namespace YoutubeLinks.Api.Data.Repositories;
+
+public interface ILinkRepository
 {
-    public interface ILinkRepository
+    IQueryable<Link> AsQueryable(int playlistId, bool loadPrivate = false);
+    Task<IEnumerable<Link>> GetAll();
+    Task<Link> Get(int id);
+    Task<int> Create(Link link);
+    Task Update(Link link);
+    Task Delete(Link link);
+    Task SaveChanges();
+}
+
+public class LinkRepository(AppDbContext dbContext) : ILinkRepository
+{
+    public IQueryable<Link> AsQueryable(int playlistId, bool loadPrivate = false)
     {
-        IQueryable<Link> AsQueryable(int playlistId, bool loadPrivate = false);
-        Task<IEnumerable<Link>> GetAll();
-        Task<Link> Get(int id);
-        Task<int> Create(Link link);
-        Task Update(Link link);
-        Task Delete(Link link);
-        Task SaveChanges();
+        var query = dbContext.Links
+            .Include(x => x.Playlist)
+            .Where(x => x.PlaylistId == playlistId);
+
+        if (!loadPrivate)
+        {
+            query = query.Where(x => x.Playlist.Public);
+        }
+
+        return query.AsSplitQuery()
+            .AsQueryable();
     }
 
-    public class LinkRepository : ILinkRepository
+    public async Task<IEnumerable<Link>> GetAll()
     {
-        private readonly AppDbContext _dbContext;
+        return await dbContext.Links
+            .Include(x => x.Playlist)
+            .ToListAsync();
+    }
 
-        public LinkRepository(AppDbContext dbContext)
-        {
-            _dbContext = dbContext;
-        }
+    public async Task<Link> Get(int id)
+    {
+        return await dbContext.Links
+            .Include(x => x.Playlist)
+            .FirstOrDefaultAsync(x => x.Id == id);
+    }
 
-        public IQueryable<Link> AsQueryable(int playlistId, bool loadPrivate = false)
-        {
-            var query = _dbContext.Links.Include(x => x.Playlist)
-                                        .Where(x => x.PlaylistId == playlistId);
+    public async Task<int> Create(Link link)
+    {
+        await dbContext.AddAsync(link);
+        await dbContext.SaveChangesAsync();
+        return link.Id;
+    }
 
-            if (!loadPrivate)
-                query = query.Where(x => x.Playlist.Public);
+    public Task Update(Link link)
+    {
+        dbContext.Update(link);
+        return Task.CompletedTask;
+    }
 
-            return query.AsSplitQuery()
-                        .AsQueryable();
-        }
+    public Task Delete(Link link)
+    {
+        dbContext.Remove(link);
+        return Task.CompletedTask;
+    }
 
-        public async Task<IEnumerable<Link>> GetAll()
-            => await _dbContext.Links.Include(x => x.Playlist)
-                                     .ToListAsync();
-
-        public async Task<Link> Get(int id)
-            => await _dbContext.Links.Include(x => x.Playlist)
-                                     .FirstOrDefaultAsync(x => x.Id == id);
-
-        public async Task<int> Create(Link link)
-        {
-            await _dbContext.AddAsync(link);
-            await _dbContext.SaveChangesAsync();
-            return link.Id;
-        }
-
-        public Task Update(Link link)
-        {
-            _dbContext.Update(link);
-            return Task.CompletedTask;
-        }
-
-        public Task Delete(Link link)
-        {
-            _dbContext.Remove(link);
-            return Task.CompletedTask;
-        }
-        public async Task SaveChanges()
-        {
-            await _dbContext.SaveChangesAsync();
-        }
+    public async Task SaveChanges()
+    {
+        await dbContext.SaveChangesAsync();
     }
 }

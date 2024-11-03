@@ -3,60 +3,73 @@ using YoutubeLinks.Shared.Features.Users.Commands;
 using YoutubeLinks.Shared.Features.Users.Queries;
 using YoutubeLinks.Shared.Features.Users.Responses;
 
-namespace YoutubeLinks.Blazor.Clients
+namespace YoutubeLinks.Blazor.Clients;
+
+public interface IUserApiClient
 {
-    public interface IUserApiClient
+    Task<bool> ConfirmEmail(ConfirmEmail.Command command);
+    Task ForgotPassword(ForgotPassword.Command command);
+    Task<JwtDto> Login(Login.Command command);
+    Task<JwtDto> RefreshToken(RefreshToken.Command command);
+    Task Register(Register.Command command);
+    Task ResendConfirmationEmail(ResendConfirmationEmail.Command command);
+    Task<bool> ResetPassword(ResetPassword.Command command);
+    Task UpdateUserTheme(UpdateUserTheme.Command command);
+    Task<PagedList<UserDto>> GetAllUsers(GetAllUsers.Query query);
+    Task<UserDto> GetUser(int id);
+}
+
+public class UserApiClient(IApiClient apiClient) : IUserApiClient
+{
+    private const string Url = "api/users";
+
+    public async Task<bool> ConfirmEmail(ConfirmEmail.Command command)
     {
-        Task<bool> ConfirmEmail(ConfirmEmail.Command command);
-        Task ForgotPassword(ForgotPassword.Command command);
-        Task<JwtDto> Login(Login.Command command);
-        Task<JwtDto> RefreshToken(RefreshToken.Command command);
-        Task Register(Register.Command command);
-        Task ResendConfirmationEmail(ResendConfirmationEmail.Command command);
-        Task<bool> ResetPassword(ResetPassword.Command command);
-        Task UpdateUserTheme(UpdateUserTheme.Command command);
-        Task<PagedList<UserDto>> GetAllUsers(GetAllUsers.Query query);
-        Task<UserDto> GetUser(int id);
+        return await apiClient.Post<ConfirmEmail.Command, bool>($"{Url}/confirmEmail", command);
     }
 
-    public class UserApiClient : IUserApiClient
+    public async Task ForgotPassword(ForgotPassword.Command command)
     {
-        private readonly IApiClient _apiClient;
-        private readonly string _url = "api/users";
+        await apiClient.Post($"{Url}/forgotPassword", command);
+    }
 
-        public UserApiClient(IApiClient apiClient)
-        {
-            _apiClient = apiClient;
-        }
+    public async Task<JwtDto> Login(Login.Command command)
+    {
+        return await apiClient.Post<Login.Command, JwtDto>($"{Url}/login", command);
+    }
 
-        public async Task<bool> ConfirmEmail(ConfirmEmail.Command command)
-            => await _apiClient.Post<ConfirmEmail.Command, bool>($"{_url}/confirmEmail", command);
+    public async Task<JwtDto> RefreshToken(RefreshToken.Command command)
+    {
+        return await apiClient.Post<RefreshToken.Command, JwtDto>($"{Url}/refresh-token", command);
+    }
 
-        public async Task ForgotPassword(ForgotPassword.Command command)
-            => await _apiClient.Post($"{_url}/forgotPassword", command);
+    public async Task Register(Register.Command command)
+    {
+        await apiClient.Post($"{Url}/register", command);
+    }
 
-        public async Task<JwtDto> Login(Login.Command command)
-            => await _apiClient.Post<Login.Command, JwtDto>($"{_url}/login", command);
+    public async Task ResendConfirmationEmail(ResendConfirmationEmail.Command command)
+    {
+        await apiClient.Post($"{Url}/resendConfirmationEmail", command);
+    }
 
-        public async Task<JwtDto> RefreshToken(RefreshToken.Command command)
-            => await _apiClient.Post<RefreshToken.Command, JwtDto>($"{_url}/refresh-token", command);
+    public async Task<bool> ResetPassword(ResetPassword.Command command)
+    {
+        return await apiClient.Post<ResetPassword.Command, bool>($"{Url}/resetPassword", command);
+    }
 
-        public async Task Register(Register.Command command)
-            => await _apiClient.Post($"{_url}/register", command);
+    public async Task UpdateUserTheme(UpdateUserTheme.Command command)
+    {
+        await apiClient.Put($"{Url}/{command.Id}/theme", command);
+    }
 
-        public async Task ResendConfirmationEmail(ResendConfirmationEmail.Command command)
-            => await _apiClient.Post($"{_url}/resendConfirmationEmail", command);
+    public async Task<PagedList<UserDto>> GetAllUsers(GetAllUsers.Query query)
+    {
+        return await apiClient.Post<GetAllUsers.Query, PagedList<UserDto>>($"{Url}/all", query);
+    }
 
-        public async Task<bool> ResetPassword(ResetPassword.Command command)
-            => await _apiClient.Post<ResetPassword.Command, bool>($"{_url}/resetPassword", command);
-
-        public async Task UpdateUserTheme(UpdateUserTheme.Command command)
-            => await _apiClient.Put($"{_url}/{command.Id}/theme", command);
-
-        public async Task<PagedList<UserDto>> GetAllUsers(GetAllUsers.Query query)
-            => await _apiClient.Post<GetAllUsers.Query, PagedList<UserDto>>($"{_url}/all", query);
-
-        public async Task<UserDto> GetUser(int id)
-            => await _apiClient.Get<UserDto>($"{_url}/{id}");
+    public async Task<UserDto> GetUser(int id)
+    {
+        return await apiClient.Get<UserDto>($"{Url}/{id}");
     }
 }

@@ -4,97 +4,92 @@ using Microsoft.JSInterop;
 using MudBlazor;
 using YoutubeLinks.Blazor.Clients;
 using YoutubeLinks.Blazor.Components;
-using YoutubeLinks.Blazor.Exceptions;
 using YoutubeLinks.Blazor.Localization;
 using YoutubeLinks.Blazor.Pages.Error;
 using YoutubeLinks.Shared.Exceptions;
 using YoutubeLinks.Shared.Features.Links.Commands;
 using YoutubeLinks.Shared.Features.Links.Helpers;
 
-namespace YoutubeLinks.Blazor.Pages.Links
+namespace YoutubeLinks.Blazor.Pages.Links;
+
+public partial class DownloadLinkPage(
+    ILinkApiClient linkApiClient,
+    IStringLocalizer<App> localizer,
+    IJSRuntime jsRuntime)
+    : ComponentBase
 {
-    public partial class DownloadLinkPage : ComponentBase
+    private readonly List<DownloadLinkResult> _downloadLinkResults = [];
+    private CustomValidator _customValidator;
+    private List<BreadcrumbItem> _items;
+    private FritzProcessingButton _processingButton;
+
+    [Parameter]
+    public DownloadSingleLink.Command Command { get; set; } = new()
     {
-        private CustomValidator _customValidator;
-        private List<BreadcrumbItem> _items;
-        private FritzProcessingButton _processingButton;
+        Url = "",
+        YoutubeFileType = YoutubeFileType.Mp3
+    };
 
-        private List<DownloadLinkResult> _downloadLinkResults = [];
+    protected override void OnParametersSet()
+    {
+        _items =
+        [
+            new BreadcrumbItem(localizer[nameof(AppStrings.DownloadLink)], null, true)
+        ];
+    }
 
-        private class DownloadLinkResult
+    private async Task HandleValidSubmit()
+    {
+        try
         {
-            public string Url { get; set; }
-            public bool Success { get; set; }
-        }
+            _processingButton.SetProcessing(true);
 
-        public class DownloadLinkPageConst
-        {
-            public const string UrlInput = "download-link-page-url-input";
-            public const string YoutubeFileTypeSelect = "download-link-page-youtube-file-type-select";
-            public const string DownloadButton = "download-link-page-download-button";
-        }
+            var response = await linkApiClient.DownloadSingleLink(Command);
 
-        [Parameter]
-        public DownloadSingleLink.Command Command { get; set; } = new()
-        {
-            Url = "",
-            YoutubeFileType = YoutubeFileType.MP3
-        };
-
-        [Inject] public IExceptionHandler ExceptionHandler { get; set; }
-        [Inject] public ILinkApiClient LinkApiClient { get; set; }
-
-        [Inject] public IStringLocalizer<App> Localizer { get; set; }
-
-        [Inject] public IJSRuntime JSRuntime { get; set; }
-
-        protected override void OnParametersSet()
-        {
-            _items =
-            [
-                new(Localizer[nameof(AppStrings.DownloadLink)], href: null, disabled: true),
-            ];
-        }
-
-        private async Task HandleValidSubmit()
-        {
-            try
+            await using (var stream = await response.Content.ReadAsStreamAsync())
             {
-                _processingButton.SetProcessing(true);
+                var streamRef = new DotNetStreamReference(stream);
+                var filename = response.Content.Headers.ContentDisposition?.FileNameStar ??
+                               $"default_name.{YoutubeHelpers.YoutubeFileTypeToString(Command.YoutubeFileType)}";
 
-                var response = await LinkApiClient.DownloadSingleLink(Command);
-
-                using (var stream = await response.Content.ReadAsStreamAsync())
-                {
-                    var streamRef = new DotNetStreamReference(stream);
-                    var filename = response.Content.Headers.ContentDisposition.FileNameStar ?? $"default_name.{YoutubeHelpers.YoutubeFileTypeToString(Command.YoutubeFileType)}";
-
-                    await JSRuntime.InvokeVoidAsync("downloadFile", filename, streamRef);
-                }
-
-                _downloadLinkResults.Add(new()
-                {
-                    Url = Command.Url,
-                    Success = true,
-                });
+                await jsRuntime.InvokeVoidAsync("downloadFile", filename, streamRef);
             }
-            catch (MyValidationException validationException)
+
+            _downloadLinkResults.Add(new DownloadLinkResult
             {
-                _customValidator.DisplayErrors(validationException.Errors);
-            }
-            catch (Exception)
-            {
-                _downloadLinkResults.Add(new()
-                {
-                    Url = Command.Url,
-                    Success = false,
-                });
-            }
-            finally
-            {
-                _processingButton.SetProcessing(false);
-                Command.Url = "";
-            }
+                Url = Command.Url,
+                Success = true
+            });
         }
+        catch (MyValidationException validationException)
+        {
+            _customValidator.DisplayErrors(validationException.Errors);
+        }
+        catch (Exception)
+        {
+            _downloadLinkResults.Add(new DownloadLinkResult
+            {
+                Url = Command.Url,
+                Success = false
+            });
+        }
+        finally
+        {
+            _processingButton.SetProcessing(false);
+            Command.Url = "";
+        }
+    }
+
+    private class DownloadLinkResult
+    {
+        public string Url { get; init; }
+        public bool Success { get; init; }
+    }
+
+    public abstract class DownloadLinkPageConst
+    {
+        public const string UrlInput = "download-link-page-url-input";
+        public const string YoutubeFileTypeSelect = "download-link-page-youtube-file-type-select";
+        public const string DownloadButton = "download-link-page-download-button";
     }
 }

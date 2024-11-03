@@ -1,14 +1,13 @@
-﻿namespace YoutubeLinks.Api.Emails.Models
-{
-    public class ForgotPasswordTemplateModel : BaseTemplateModel
-    {
-        public string UserName { get; set; }
-        public string Link { get; set; }
+﻿namespace YoutubeLinks.Api.Emails.Models;
 
-        public ForgotPasswordTemplateModel()
-        {
-            Subject = "Forgot password";
-            TemplateFileName = "ForgotPasswordEmailTemplate.cshtml";
-        }
+public class ForgotPasswordTemplateModel : BaseTemplateModel
+{
+    public ForgotPasswordTemplateModel()
+    {
+        Subject = "Forgot password";
+        TemplateFileName = "ForgotPasswordEmailTemplate.cshtml";
     }
+
+    public string UserName { get; init; }
+    public string Link { get; init; }
 }

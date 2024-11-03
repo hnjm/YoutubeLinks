@@ -1,27 +1,27 @@
 ﻿<CascadingAuthenticationState>
-    <Router AppAssembly=typeof(App).Assembly>
+    <Router AppAssembly="typeof(App).Assembly">
         <Found Context="routeData">
-            <AuthorizeRouteView RouteData=routeData
-                                DefaultLayout=typeof(MainLayout)>
+            <AuthorizeRouteView DefaultLayout="typeof(MainLayout)"
+                                RouteData="routeData">
                 <NotAuthorized>
                     <UnauthorizedErrorPage />
                 </NotAuthorized>
                 <Authorizing>
                     <h1>
-                        @Localizer[nameof(AppStrings.AuthenticationInProgress)]
+                        @localizer[nameof(AppStrings.AuthenticationInProgress)]
                     </h1>
                 </Authorizing>
             </AuthorizeRouteView>
-            <FocusOnNavigate RouteData=routeData
+            <FocusOnNavigate RouteData="routeData"
                              Selector="h1" />
         </Found>
         <NotFound>
             <PageTitle>
-                @Localizer[nameof(AppStrings.NotFound)]
+                @localizer[nameof(AppStrings.NotFound)]
             </PageTitle>
-            <LayoutView Layout=typeof(MainLayout)>
+            <LayoutView Layout="typeof(MainLayout)">
                 <p role="alert">
-                    @Localizer[nameof(AppStrings.InvalidRoute)]
+                    @localizer[nameof(AppStrings.InvalidRoute)]
                 </p>
             </LayoutView>
         </NotFound>

@@ -3,36 +3,42 @@ using Microsoft.Extensions.Localization;
 using MudBlazor;
 using YoutubeLinks.Blazor.Localization;
 
-namespace YoutubeLinks.Blazor.Shared
+namespace YoutubeLinks.Blazor.Shared;
+
+public partial class InformationDialog(
+    IStringLocalizer<App> localizer)
+    : ComponentBase
 {
-    public partial class InformationDialog : ComponentBase
+    [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
+    [Parameter] public string ContentText { get; set; }
+    [Parameter] public string ButtonText { get; set; }
+    [Parameter] public Color Color { get; set; } = Color.Primary;
+
+    protected override void OnParametersSet()
     {
-        public class InformationDialogConst
+        if (string.IsNullOrWhiteSpace(ContentText))
         {
-            public const string ConfirmButton = "information-dialog-confirm-button";
+            ContentText = localizer[nameof(AppStrings.InformationConfirmInfo)];
         }
 
-        [CascadingParameter] public MudDialogInstance MudDialog { get; set; }
-
-        [Parameter] public string ContentText { get; set; }
-        [Parameter] public string ButtonText { get; set; }
-        [Parameter] public Color Color { get; set; } = Color.Primary;
-
-        [Inject] public IStringLocalizer<App> Localizer { get; set; }
-
-        protected override void OnParametersSet()
+        if (string.IsNullOrWhiteSpace(ButtonText))
         {
-            if (string.IsNullOrWhiteSpace(ContentText))
-                ContentText = Localizer[nameof(AppStrings.InformationConfirmInfo)];
-
-            if (string.IsNullOrWhiteSpace(ButtonText))
-                ButtonText = Localizer[nameof(AppStrings.Yes)];
+            ButtonText = localizer[nameof(AppStrings.Yes)];
         }
+    }
 
-        private void Submit() 
-            => MudDialog.Close(DialogResult.Ok(true));
+    private void Submit()
+    {
+        MudDialog.Close(DialogResult.Ok(true));
+    }
 
-        private void Cancel() 
-            => MudDialog.Cancel();
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    public abstract class InformationDialogConst
+    {
+        public const string ConfirmButton = "information-dialog-confirm-button";
     }
 }

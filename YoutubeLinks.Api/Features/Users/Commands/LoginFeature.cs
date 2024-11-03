@@ -8,65 +8,54 @@ using YoutubeLinks.Shared.Exceptions;
 using YoutubeLinks.Shared.Features.Users.Commands;
 using YoutubeLinks.Shared.Features.Users.Responses;
 
-namespace YoutubeLinks.Api.Features.Users.Commands
+namespace YoutubeLinks.Api.Features.Users.Commands;
+
+public static class LoginFeature
 {
-    public static class LoginFeature
+    public static void Endpoint(this IEndpointRouteBuilder app)
     {
-        public static IEndpointRouteBuilder Endpoint(this IEndpointRouteBuilder app)
-        {
-            app.MapPost("/api/users/login", async (
+        app.MapPost("/api/users/login", async (
                 Login.Command command,
                 IMediator mediator,
                 CancellationToken cancellationToken) =>
             {
                 return Results.Ok(await mediator.Send(command, cancellationToken));
             })
-                .WithTags(Tags.Users)
-                .AllowAnonymous();
+            .WithTags(Tags.Users)
+            .AllowAnonymous();
+    }
 
-            return app;
-        }
-
-        public class Handler : IRequestHandler<Login.Command, JwtDto>
+    public class Handler(
+        IPasswordService passwordService,
+        IUserRepository userRepository,
+        IAuthenticator authenticator,
+        IStringLocalizer<ApiValidationMessage> localizer)
+        : IRequestHandler<Login.Command, JwtDto>
+    {
+        public async Task<JwtDto> Handle(Login.Command command, CancellationToken cancellationToken)
         {
-            private readonly IPasswordService _passwordService;
-            private readonly IUserRepository _userRepository;
-            private readonly IAuthenticator _authenticator;
-            private readonly IStringLocalizer<ApiValidationMessage> _localizer;
+            var user = await userRepository.GetByEmail(command.Email) ??
+                       throw new MyValidationException(nameof(Login.Command.Email),
+                           localizer[nameof(ApiValidationMessageString.EmailUserWithGivenEmailDoesNotExist)]);
 
-            public Handler(
-                IPasswordService passwordService,
-                IUserRepository userRepository,
-                IAuthenticator authenticator,
-                IStringLocalizer<ApiValidationMessage> localizer)
+            if (!user.EmailConfirmed)
             {
-                _passwordService = passwordService;
-                _userRepository = userRepository;
-                _authenticator = authenticator;
-                _localizer = localizer;
+                throw new MyValidationException(nameof(Login.Command.Email),
+                    localizer[nameof(ApiValidationMessageString.EmailIsNotConfirmed)]);
             }
 
-            public async Task<JwtDto> Handle(Login.Command command, CancellationToken cancellationToken)
+            if (!passwordService.Validate(command.Password, user.Password))
             {
-                var user = await _userRepository.GetByEmail(command.Email) ??
-                    throw new MyValidationException(nameof(Login.Command.Email),
-                        _localizer[nameof(ApiValidationMessageString.EmailUserWithGivenEmailDoesNotExist)]);
-
-                if (!user.EmailConfirmed)
-                    throw new MyValidationException(nameof(Login.Command.Email),
-                        _localizer[nameof(ApiValidationMessageString.EmailIsNotConfirmed)]);
-
-                if (!_passwordService.Validate(command.Password, user.Password))
-                    throw new MyValidationException(nameof(Login.Command.Password),
-                        _localizer[nameof(ApiValidationMessageString.PasswordIsIncorrect)]);
-
-                var jwt = _authenticator.CreateTokens(user);
-
-                user.RefreshToken = jwt.RefreshToken;
-                await _userRepository.Update(user);
-
-                return jwt;
+                throw new MyValidationException(nameof(Login.Command.Password),
+                    localizer[nameof(ApiValidationMessageString.PasswordIsIncorrect)]);
             }
+
+            var jwt = authenticator.CreateTokens(user);
+
+            user.RefreshToken = jwt.RefreshToken;
+            await userRepository.Update(user);
+
+            return jwt;
         }
     }
 }

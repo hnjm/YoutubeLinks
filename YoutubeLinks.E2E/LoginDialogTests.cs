@@ -1,37 +1,36 @@
-﻿namespace YoutubeLinks.E2E
+﻿namespace YoutubeLinks.E2E;
+
+[TestFixture]
+public class LoginDialogTests : PageTestBase
 {
-    [TestFixture]
-    public class LoginDialogTests : PageTestBase
+    [Test]
+    public async Task LoginDialogCanLogInUser()
     {
-        [Test]
-        public async Task LoginDialogCanLogInUser()
-        {
-            await LoginAsUser();
-        }
+        await LoginAsUser();
+    }
 
-        [Test]
-        public async Task LoginDialogCanLogInAdmin()
-        {
-            await LoginAsAdmin();
-        }
+    [Test]
+    public async Task LoginDialogCanLogInAdmin()
+    {
+        await LoginAsAdmin();
+    }
 
-        [Test]
-        public async Task TestLogout()
-        {
-            await LoginAsAdmin();
-            await Logout();
-        }
+    [Test]
+    public async Task TestLogout()
+    {
+        await LoginAsAdmin();
+        await Logout();
+    }
 
-        [Test]
-        public async Task ResendConfirmationEmail()
-        {
+    [Test]
+    public Task ResendConfirmationEmail()
+    {
+        return Task.CompletedTask;
+    }
 
-        }
-
-        [Test]
-        public async Task ForgotPassword()
-        {
-
-        }
+    [Test]
+    public Task ForgotPassword()
+    {
+        return Task.CompletedTask;
     }
 }
